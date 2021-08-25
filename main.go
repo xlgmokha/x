@@ -1,7 +1,7 @@
 package main
 
-import "fmt"
+import "github.com/xlg-pkg/x/stdout"
 
 func main() {
-	fmt.Println("You must be lost!")
+	stdout.Puts("You lost?")
 }
