@@ -23,14 +23,39 @@ func port() string {
 	return host
 }
 
+func directory() string {
+	if len(os.Args) > 1 {
+		return os.Args[1]
+	}
+	return "."
+}
+
 func listenAddress() string {
 	return fmt.Sprintf("%s:%s", host(), port())
 }
 
-func main() {
-	address := listenAddress()
-	fmt.Printf("HTTP Server Ready at http://%s\n", address)
+func buildHttpHandlerFor(root string) http.Handler {
+	http.Handle("/", http.FileServer(http.Dir(root)))
 
-	http.Handle("/", http.FileServer(http.Dir(".")))
-	log.Fatal(http.ListenAndServe(address, nil))
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			fmt.Printf("%s %s\n", r.Method, r.URL)
+			http.DefaultServeMux.ServeHTTP(w, r)
+		},
+	)
+}
+
+func startServer(address string, directory string) {
+	fmt.Printf("Starting Server...!\n\thttp://%s\n", address)
+
+	log.Fatal(
+		http.ListenAndServe(
+			address,
+			buildHttpHandlerFor(directory),
+		),
+	)
+}
+
+func main() {
+	startServer(listenAddress(), directory())
 }
