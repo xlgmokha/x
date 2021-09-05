@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 )
@@ -31,5 +32,5 @@ func main() {
 	fmt.Printf("HTTP Server Ready at http://%s\n", address)
 
 	http.Handle("/", http.FileServer(http.Dir(".")))
-	http.ListenAndServe(address, nil)
+	log.Fatal(http.ListenAndServe(address, nil))
 }
