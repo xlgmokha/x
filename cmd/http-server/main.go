@@ -46,7 +46,7 @@ func buildHttpHandlerFor(root string) http.Handler {
 }
 
 func startServer(address string, directory string) {
-	fmt.Printf("Starting Server...!\n\thttp://%s\n", address)
+	fmt.Printf("Listening and serving HTTP on http://%s\n", address)
 
 	log.Fatal(
 		http.ListenAndServe(
