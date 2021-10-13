@@ -33,9 +33,13 @@ func (c *Context) It(it ItFunc) {
 	c.its = append(c.its, it)
 }
 
-func (c *Context) Set(key string, value interface{}) *Context {
+func (c *Context) Let(key string, value interface{}) *Context {
 	c.state[key] = value
 	return c
+}
+
+func (c *Context) Set(key string, value interface{}) *Context {
+	return c.Let(key, value)
 }
 
 func (c *Context) Get(key string) interface{} {
