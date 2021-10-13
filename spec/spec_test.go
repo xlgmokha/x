@@ -6,10 +6,10 @@ import (
 
 func TestCalculator(t *testing.T) {
 	t.Run("when adding 1 + 1", func(t *testing.T) {
-		Establish(t, func(x *Context) {
+		Establish(func(x *Context) {
 			x.Because(func() { x.Set("result", 1+1) })
 
-			x.It(func(t *testing.T) {
+			x.It(func() {
 				result := x.Get("result").(int)
 				if result != 2 {
 					t.Errorf("Expected: 2, Got: %d", result)

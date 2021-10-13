@@ -1,7 +1,5 @@
 package spec
 
-import "testing"
-
 // establish context (e.g. "when creating a new sparkle")
 // because of (e.g. "with an empty body")
 // it behaves like (e.g. "it returns an error message")
@@ -12,9 +10,9 @@ type Context struct {
 }
 type ContextFunc func(*Context)
 type BecauseFunc func()
-type ItFunc func(*testing.T)
+type ItFunc func()
 
-func Establish(t *testing.T, x ContextFunc) {
+func Establish(x ContextFunc) {
 	context := Context{
 		its:     []ItFunc{},
 		because: func() {},
@@ -23,7 +21,7 @@ func Establish(t *testing.T, x ContextFunc) {
 	x(&context)
 	context.because()
 	for _, it := range context.its {
-		it(t)
+		it()
 	}
 }
 
