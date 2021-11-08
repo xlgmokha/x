@@ -1,0 +1,13 @@
+version: 2
+registries:
+  terraform-private:
+    type: terraform-registry
+    url: https://app.example.com
+    token: ${{secrets.MY_SECRET}}
+updates:
+  - package-ecosystem: gomod
+    directory: '/'
+    schedule:
+      interval: 'daily'
+    registries:
+      - "*"
