@@ -22,13 +22,11 @@ import (
 )
 
 var (
-	username    = *flag.String("username", "", "username")
-	password    = *flag.String("password", "", "password")
-	certificate = *flag.String("certificate", "", "certificate")
-	key         = *flag.String("key", "", "key")
-	host        = *flag.String("host", "127.0.0.1", "host")
-	port        = *flag.String("port", "8080", "port")
-	verbose     = *flag.Bool("verbose", false, "verbosity")
+	certificate = *flag.String("certificate", "", "Path to x509 Certificate fille")
+	key         = *flag.String("key", "", "Path to the private key file")
+	host        = *flag.String("host", "127.0.0.1", "Interface to bind to")
+	port        = *flag.String("port", "8080", "Port to bind to")
+	verbose     = *flag.Bool("verbose", false, "Enable verbose output")
 )
 
 type CertificateStore struct {
