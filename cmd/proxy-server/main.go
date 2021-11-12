@@ -26,7 +26,7 @@ var (
 	password    = *flag.String("password", "", "password")
 	certificate = *flag.String("certificate", "", "certificate")
 	key         = *flag.String("key", "", "key")
-	host        = *flag.String("host", "localhost", "host")
+	host        = *flag.String("host", "127.0.0.1", "host")
 	port        = *flag.String("port", "8080", "port")
 	verbose     = *flag.Bool("verbose", false, "verbosity")
 )
