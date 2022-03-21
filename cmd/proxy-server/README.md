@@ -6,7 +6,7 @@ A tiny proxy server.
 ## Installation
 
 ```bash
-$ go install github.com/xlg-pkg/proxy-server@latest
+$ go install github.com/xlgmokha/proxy-server@latest
 ```
 
 ## Usage
