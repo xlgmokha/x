@@ -8,7 +8,7 @@ and JavaScript.
 This program is written using the [Go](https://golang.org/) programming language.
 
 ```bash
-$ go install github.com/xlg-pkg/http-server@latest
+$ go install github.com/xlgmokha/http-server@latest
 ```
 
 ## Starting the server
