@@ -3,7 +3,7 @@ package context
 import (
 	"context"
 
-	"github.com/xlgmokha/x/pkg/reflect"
+	"github.com/xlgmokha/x/pkg/x"
 )
 
 type Key[T any] string
@@ -16,5 +16,5 @@ func (self Key[T]) From(ctx context.Context) T {
 	if value := ctx.Value(self); value != nil {
 		return value.(T)
 	}
-	return reflect.Default[T]()
+	return x.Default[T]()
 }
