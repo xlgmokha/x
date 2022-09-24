@@ -20,4 +20,11 @@ func TestEnv(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("Variables", func(t *testing.T) {
+		for key, value := range Variables() {
+			assert.False(t, key == "", "key: '%v'", key)
+			assert.False(t, value == "", "key: '%v', value: '%v'", key, value)
+		}
+	})
 }

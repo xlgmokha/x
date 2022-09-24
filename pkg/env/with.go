@@ -1,20 +1,27 @@
 package env
 
-import "os"
+import (
+	"os"
+)
 
 func With(env Vars, callback func()) {
 	original := Vars{}
 
 	for key, value := range env {
-		original[key] = os.Getenv(key)
+		if val, ok := os.LookupEnv(key); ok {
+			original[key] = val
+		}
 		os.Setenv(key, value)
 	}
 
-	defer func(o Vars) {
-		for key, value := range o {
+	defer func() {
+		for key, _ := range env {
+			os.Unsetenv(key)
+		}
+		for key, value := range original {
 			os.Setenv(key, value)
 		}
-	}(original)
+	}()
 
 	callback()
 }
