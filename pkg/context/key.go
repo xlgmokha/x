@@ -16,5 +16,5 @@ func (self Key[T]) From(ctx context.Context) T {
 	if value := ctx.Value(self); value != nil {
 		return value.(T)
 	}
-	return reflect.ZeroValue[T]()
+	return reflect.Default[T]()
 }

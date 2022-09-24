@@ -1,6 +1,6 @@
 package reflect
 
-func ZeroValue[T any]() T {
+func Default[T any]() T {
 	var item T
 	return item
 }
