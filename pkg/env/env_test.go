@@ -1,6 +1,7 @@
 package env
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,6 +24,10 @@ func TestEnv(t *testing.T) {
 
 	t.Run("Variables", func(t *testing.T) {
 		for key, value := range Variables() {
+			if strings.HasPrefix(key, "GITHUB_") {
+				continue
+			}
+
 			assert.False(t, key == "", "key: '%v'", key)
 			assert.False(t, value == "", "key: '%v', value: '%v'", key, value)
 		}
