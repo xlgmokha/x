@@ -49,3 +49,25 @@ func TestFindAll(t *testing.T) {
 		assert.Empty(t, results)
 	})
 }
+
+func TestContains(t *testing.T) {
+	t.Run("returns true", func(t *testing.T) {
+		items := []int{1, 2, 3, 4, 5}
+
+		result := Contains(items, func(item int) bool {
+			return item == 3
+		})
+
+		assert.True(t, result)
+	})
+
+	t.Run("returns false", func(t *testing.T) {
+		items := []int{1, 2, 3, 4, 5}
+
+		result := Contains(items, func(item int) bool {
+			return item == 7
+		})
+
+		assert.False(t, result)
+	})
+}

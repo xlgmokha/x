@@ -20,3 +20,8 @@ func FindAll[T any](items []T, predicate Predicate[T]) []T {
 	}
 	return results
 }
+
+func Contains[T comparable](items []T, predicate Predicate[T]) bool {
+	item := Find[T](items, predicate)
+	return item != Default[T]()
+}
