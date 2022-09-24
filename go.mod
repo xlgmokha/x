@@ -1,3 +1,3 @@
-module github.com/xlg-pkg/x
+module github.com/xlgmokha/x
 
-go 1.16
+go 1.18
