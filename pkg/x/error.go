@@ -1,8 +1,12 @@
 package x
 
+var Panic = func(err error) {
+	panic(err)
+}
+
 func Check(err error) {
 	if err != nil {
-		panic(err)
+		Panic(err)
 	}
 }
 
