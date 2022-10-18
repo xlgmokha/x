@@ -1,6 +1,7 @@
 package x
 
 type Predicate[T any] func(T) bool
+type Mapper[T any, K any] func(T) K
 
 func Find[T any](items []T, predicate Predicate[T]) T {
 	for _, item := range items {
@@ -26,7 +27,7 @@ func Contains[T comparable](items []T, predicate Predicate[T]) bool {
 	return item != Default[T]()
 }
 
-func Map[TInput any, TOutput any](items []TInput, mapFrom func(TInput) TOutput) []TOutput {
+func Map[TInput any, TOutput any](items []TInput, mapFrom Mapper[TInput, TOutput]) []TOutput {
 	results := []TOutput{}
 	for _, item := range items {
 		results = append(results, mapFrom(item))
