@@ -1,6 +1,7 @@
 package x
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -69,5 +70,15 @@ func TestContains(t *testing.T) {
 		})
 
 		assert.False(t, result)
+	})
+}
+
+func TestMap(t *testing.T) {
+	t.Run("maps each item", func(t *testing.T) {
+		items := []int{1, 2, 3}
+		result := Map(items, func(item int) string {
+			return strconv.Itoa(item)
+		})
+		assert.Equal(t, []string{"1", "2", "3"}, result)
 	})
 }

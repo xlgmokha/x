@@ -25,3 +25,11 @@ func Contains[T comparable](items []T, predicate Predicate[T]) bool {
 	item := Find[T](items, predicate)
 	return item != Default[T]()
 }
+
+func Map[TInput any, TOutput any](items []TInput, mapFrom func(TInput) TOutput) []TOutput {
+	results := []TOutput{}
+	for _, item := range items {
+		results = append(results, mapFrom(item))
+	}
+	return results
+}
