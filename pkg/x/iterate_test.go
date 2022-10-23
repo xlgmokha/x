@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFind(t *testing.T) {
@@ -80,5 +81,34 @@ func TestMap(t *testing.T) {
 			return strconv.Itoa(item)
 		})
 		assert.Equal(t, []string{"1", "2", "3"}, result)
+	})
+}
+
+func TestEach(t *testing.T) {
+	t.Run("visits each item", func(t *testing.T) {
+		results := []int{}
+
+		Each([]int{1, 2, 3}, func(i int) {
+			results = append(results, i)
+		})
+
+		assert.Equal(t, []int{1, 2, 3}, results)
+	})
+}
+
+func TestInject(t *testing.T) {
+	t.Run("collects each item", func(t *testing.T) {
+		items := []int{1, 3, 6}
+
+		result := Inject[int, map[int]bool](items,
+			map[int]bool{},
+			func(memo map[int]bool, item int) {
+				memo[item] = true
+			})
+
+		require.NotNil(t, result)
+		assert.True(t, result[1])
+		assert.True(t, result[3])
+		assert.True(t, result[6])
 	})
 }
