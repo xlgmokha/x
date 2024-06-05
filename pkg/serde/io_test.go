@@ -99,6 +99,18 @@ func TestFrom(t *testing.T) {
 		assert.Equal(t, "my-key", results[0].Key)
 		assert.Equal(t, "my-value", results[0].Value)
 	})
+
+	t.Run("parses a single item from YAML data", func(t *testing.T) {
+		body := strings.NewReader(`key: "my-key"
+value: "my-value"
+`)
+
+		result, err := From[Example](body, YAML)
+
+		require.NoError(t, err)
+		assert.Equal(t, "my-key", result.Key)
+		assert.Equal(t, "my-value", result.Value)
+	})
 }
 
 func TestTo(t *testing.T) {

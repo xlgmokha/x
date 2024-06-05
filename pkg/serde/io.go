@@ -5,10 +5,14 @@ import (
 )
 
 func From[T any](r io.Reader, mediaType MediaType) (T, error) {
-	if mediaType == JSONAPI {
+	switch mediaType {
+	case JSONAPI:
 		return FromJSONAPI[T](r)
+	case YAML:
+		return FromYAML[T](r)
+	default:
+		return FromJSON[T](r)
 	}
-	return FromJSON[T](r)
 }
 
 func To[T any](w io.Writer, item T, mediaType MediaType) error {
