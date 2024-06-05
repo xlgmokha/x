@@ -15,6 +15,7 @@ const (
 	JSONAPI MediaType = jsonapi.MediaType
 	JSON    MediaType = "application/json"
 	Text    MediaType = "text/plain"
+	YAML    MediaType = "application/yaml"
 	Default MediaType = JSON
 )
 

@@ -17,6 +17,8 @@ func To[T any](w io.Writer, item T, mediaType MediaType) error {
 		return ToJSONAPI[T](w, item)
 	case Text:
 		return ToPlain[T](w, item)
+	case YAML:
+		return ToYAML[T](w, item)
 	default:
 		return ToJSON[T](w, item)
 	}

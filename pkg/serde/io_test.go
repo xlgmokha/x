@@ -11,8 +11,8 @@ import (
 
 func TestFrom(t *testing.T) {
 	type Example struct {
-		Key   string `json:"key" jsonapi:"primary,examples"`
-		Value string `json:"value" jsonapi:"attr,value"`
+		Key   string `json:"key" jsonapi:"primary,examples" yaml:"key"`
+		Value string `json:"value" jsonapi:"attr,value" yaml:"value"`
 	}
 
 	t.Run("parses a single item from JSON data", func(t *testing.T) {
@@ -207,6 +207,18 @@ func TestTo(t *testing.T) {
 			Value: "my-value",
 		}}, JSONAPI))
 		expected := `{"data":[{"type":"examples","id":"my-key","attributes":{"value":"my-value"}}]}
+`
+		assert.Equal(t, expected, w.String())
+	})
+
+	t.Run("serializes an item to YAML", func(t *testing.T) {
+		w := bytes.NewBuffer(nil)
+		require.NoError(t, To[Example](w, Example{
+			Key:   "my-key",
+			Value: "my-value",
+		}, YAML))
+		expected := `key: my-key
+value: my-value
 `
 		assert.Equal(t, expected, w.String())
 	})
