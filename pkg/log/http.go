@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func Middleware(logger *zerolog.Logger) func(http.Handler) http.Handler {
+func HTTP(logger *zerolog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := logger.WithContext(r.Context())
