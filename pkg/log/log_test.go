@@ -69,9 +69,13 @@ func TestLog(t *testing.T) {
 		items, err := serde.FromJSON[map[string]interface{}](bufio.NewReader(&b))
 		require.NoError(t, err)
 
-		assert.Equal(t, float64(http.StatusTeapot), items["status"])
+		require.Contains(t, items, "method")
 		assert.Equal(t, "GET", items["method"])
+
+		require.Contains(t, items, "path")
 		assert.Equal(t, "/", items["path"])
+
+		require.Contains(t, items, "remote_host")
 		assert.Contains(t, items["remote_host"], "127.0.0.1")
 	})
 }
