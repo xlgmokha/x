@@ -3,6 +3,7 @@ module github.com/xlgmokha/x
 go 1.18
 
 require (
+	github.com/golobby/container/v3 v3.3.2
 	github.com/google/jsonapi v1.0.0
 	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.8.1

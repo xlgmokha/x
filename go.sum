@@ -3,6 +3,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
+github.com/golobby/container/v3 v3.3.2 h1:7u+RgNnsdVlhGoS8gY4EXAG601vpMMzLZlYqSp77Quw=
+github.com/golobby/container/v3 v3.3.2/go.mod h1:RDdKpnKpV1Of11PFBe7Dxc2C1k2KaLE4FD47FflAmj0=
 github.com/google/jsonapi v1.0.0 h1:qIGgO5Smu3yJmSs+QlvhQnrscdZfFhiV6S8ryJAglqU=
 github.com/google/jsonapi v1.0.0/go.mod h1:YYHiRPJT8ARXGER8In9VuLv4qvLfDmA9ULQqptbLE4s=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=
