@@ -17,6 +17,10 @@ func Zero[T any]() T {
 	return item
 }
 
+func IsZero[T comparable](item T) bool {
+	return item == Zero[T]()
+}
+
 func IsPtr[T any](item T) bool {
 	return Is[T](item, reflect.Pointer)
 }
