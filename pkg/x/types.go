@@ -3,12 +3,17 @@ package x
 import "reflect"
 
 func Default[T any]() T {
-	var item T
+	item := Zero[T]()
 
 	if IsPtr[T](item) {
 		return reflect.New(reflect.TypeOf(item).Elem()).Interface().(T)
 	}
 
+	return item
+}
+
+func Zero[T any]() T {
+	var item T
 	return item
 }
 
