@@ -10,7 +10,7 @@ func Find[T any](items []T, predicate Predicate[T]) T {
 			return item
 		}
 	}
-	return Default[T]()
+	return Zero[T]()
 }
 
 func FindAll[T any](items []T, predicate Predicate[T]) []T {
@@ -24,7 +24,7 @@ func FindAll[T any](items []T, predicate Predicate[T]) []T {
 }
 
 func Contains[T comparable](items []T, predicate Predicate[T]) bool {
-	return Find[T](items, predicate) != Default[T]()
+	return Find[T](items, predicate) != Zero[T]()
 }
 
 func Map[TInput any, TOutput any](items []TInput, mapFrom Mapper[TInput, TOutput]) []TOutput {

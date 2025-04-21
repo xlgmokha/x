@@ -1,6 +1,7 @@
 package x
 
 import (
+	"net/http"
 	"strconv"
 	"testing"
 
@@ -27,6 +28,16 @@ func TestFind(t *testing.T) {
 		})
 
 		assert.Equal(t, 0, result)
+	})
+
+	t.Run("returns nil", func(t *testing.T) {
+		items := []*http.Client{http.DefaultClient}
+
+		result := Find(items, func(item *http.Client) bool {
+			return false
+		})
+
+		assert.Nil(t, result)
 	})
 }
 
@@ -68,6 +79,16 @@ func TestContains(t *testing.T) {
 
 		result := Contains(items, func(item int) bool {
 			return item == 7
+		})
+
+		assert.False(t, result)
+	})
+
+	t.Run("returns false on nil", func(t *testing.T) {
+		items := []*http.Client{http.DefaultClient}
+
+		result := Contains(items, func(item *http.Client) bool {
+			return false
 		})
 
 		assert.False(t, result)
