@@ -93,4 +93,20 @@ func TestTypes(t *testing.T) {
 			assert.False(t, IsZero[*http.Client](&http.Client{}))
 		})
 	})
+
+	t.Run("IsPresent", func(t *testing.T) {
+		t.Run("returns false", func(t *testing.T) {
+			assert.False(t, IsPresent[int](0))
+			assert.False(t, IsPresent[bool](false))
+			assert.False(t, IsPresent[string](""))
+			assert.False(t, IsPresent[*http.Client](nil))
+		})
+
+		t.Run("returns true", func(t *testing.T) {
+			assert.True(t, IsPresent[int](1))
+			assert.True(t, IsPresent[bool](true))
+			assert.True(t, IsPresent[string]("hello"))
+			assert.True(t, IsPresent[*http.Client](&http.Client{}))
+		})
+	})
 }
