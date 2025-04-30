@@ -47,3 +47,7 @@ func Inject[TInput any, TOutput any](items []TInput, memo TOutput, f func(TOutpu
 	}
 	return memo
 }
+
+func Prepend[T any](rest []T, beginning ...T) []T {
+	return append(beginning, rest...)
+}

@@ -133,3 +133,23 @@ func TestInject(t *testing.T) {
 		assert.True(t, result[6])
 	})
 }
+
+func TestPrepend(t *testing.T) {
+	t.Run("adds a new item to the beginning", func(t *testing.T) {
+		items := []int{1, 3, 6}
+
+		result := Prepend[int](items, 7)
+
+		require.NotZero(t, result)
+		assert.Equal(t, []int{7, 1, 3, 6}, result)
+	})
+
+	t.Run("adss multiple items to the beginning", func(t *testing.T) {
+		items := []int{1, 3, 6}
+
+		result := Prepend[int](items, 7, 9)
+
+		require.NotZero(t, result)
+		assert.Equal(t, []int{7, 9, 1, 3, 6}, result)
+	})
+}
