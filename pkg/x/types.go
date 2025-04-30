@@ -2,6 +2,8 @@ package x
 
 import "reflect"
 
+type Option[T any] func(T) T
+
 func Default[T any]() T {
 	item := Zero[T]()
 
@@ -9,6 +11,14 @@ func Default[T any]() T {
 		return reflect.New(reflect.TypeOf(item).Elem()).Interface().(T)
 	}
 
+	return item
+}
+
+func New[T any](options ...Option[T]) T {
+	item := Default[T]()
+	for _, option := range options {
+		item = option(item)
+	}
 	return item
 }
 

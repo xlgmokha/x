@@ -2,6 +2,7 @@ package x
 
 import (
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,7 @@ func TestTypes(t *testing.T) {
 	})
 
 	t.Run("Default", func(t *testing.T) {
-		t.Run("returns nil", func(t *testing.T) {
+		t.Run("returns a new instance", func(t *testing.T) {
 			result := Default[*http.Client]()
 
 			assert.NotNil(t, result)
@@ -49,6 +50,46 @@ func TestTypes(t *testing.T) {
 
 		t.Run("returns an empty slice", func(t *testing.T) {
 			assert.Equal(t, 0, len(Default[[]string]()))
+		})
+	})
+
+	t.Run("New", func(t *testing.T) {
+		t.Run("returns a new instance", func(t *testing.T) {
+			result := New[*http.Client]()
+
+			assert.NotNil(t, result)
+			assert.True(t, IsPtr(result))
+		})
+
+		t.Run("configures the new instance", func(t *testing.T) {
+			option := func(r *http.Request) *http.Request {
+				r.Method = "GET"
+				return r
+			}
+
+			result := New[*http.Request](option)
+
+			assert.NotNil(t, result)
+			assert.True(t, IsPtr(result))
+			assert.Equal(t, "GET", result.Method)
+		})
+
+		t.Run("configures a new instance with multiple options", func(t *testing.T) {
+			option := func(r *http.Request) *http.Request {
+				r.Method = "GET"
+				return r
+			}
+			otherOption := func(r *http.Request) *http.Request {
+				r.URL = Must(url.Parse("/example"))
+				return r
+			}
+
+			result := New[*http.Request](option, otherOption)
+
+			assert.NotNil(t, result)
+			assert.True(t, IsPtr(result))
+			assert.Equal(t, "GET", result.Method)
+			assert.Equal(t, "/example", result.URL.Path)
 		})
 	})
 
