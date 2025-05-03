@@ -11,14 +11,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/xlgmokha/x/pkg/context"
 	"github.com/xlgmokha/x/pkg/serde"
+	"github.com/xlgmokha/x/pkg/x"
 )
 
-var exampleHeader RequestOption = RequestOption(func(r *http.Request) *http.Request {
+var exampleHeader x.Option[*http.Request] = x.Option[*http.Request](func(r *http.Request) *http.Request {
 	r.Header.Add("X-Example", "example")
 	return r
 })
 
-var withHost RequestOption = RequestOption(func(r *http.Request) *http.Request {
+var withHost x.Option[*http.Request] = x.Option[*http.Request](func(r *http.Request) *http.Request {
 	r.Host = "example.com"
 	return r
 })
