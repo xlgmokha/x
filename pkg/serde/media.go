@@ -19,6 +19,10 @@ const (
 	Default MediaType = JSON
 )
 
+func (self MediaType) String() string {
+	return string(self)
+}
+
 func MediaTypeFor(value string) MediaType {
 	mediaTypes := sortedByQualityValues(strings.Split(value, ","))
 
