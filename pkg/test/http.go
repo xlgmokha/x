@@ -25,7 +25,7 @@ func RequestResponse(method, target string, options ...x.Option[*http.Request]) 
 }
 
 func WithAcceptHeader(value serde.MediaType) x.Option[*http.Request] {
-	return WithRequestHeader("Accept", string(value))
+	return WithRequestHeader("Accept", value.String())
 }
 
 func WithRequestHeader(key, value string) x.Option[*http.Request] {
