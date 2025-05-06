@@ -2,6 +2,7 @@ package cookie
 
 import (
 	"crypto/hmac"
+	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"testing"
@@ -10,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xlgmokha/x/pkg/crypt"
-	"github.com/xlgmokha/x/pkg/pls"
 )
 
 func TestOption(t *testing.T) {
@@ -66,7 +66,10 @@ func TestOption(t *testing.T) {
 		assert.NotEqual(t, "1", cookie.Value)
 		assert.NotEmpty(t, cookie.Value)
 
-		signature := pls.GenerateHMAC256([]byte(secret), []byte(value))
+		mac := hmac.New(sha256.New, []byte(secret))
+		mac.Write([]byte(value))
+		signature := mac.Sum(nil)
+
 		expected := fmt.Sprintf("%v--%v", value, string(signature))
 
 		assert.Equal(t, expected, cookie.Value)
