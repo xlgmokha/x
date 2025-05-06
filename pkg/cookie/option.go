@@ -1,9 +1,11 @@
 package cookie
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/xlgmokha/x/pkg/pls"
 	"github.com/xlgmokha/x/pkg/x"
 )
 
@@ -60,4 +62,10 @@ func WithExpiration(expires time.Time) x.Option[*http.Cookie] {
 			c.MaxAge = int(duration.Seconds())
 		}
 	})
+}
+
+func WithSignedValue(value string, secret string) x.Option[*http.Cookie] {
+	signature := pls.GenerateHMAC256([]byte(secret), []byte(value))
+	expected := fmt.Sprintf("%v--%v", value, string(signature))
+	return WithValue(expected)
 }

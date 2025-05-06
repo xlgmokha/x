@@ -1,11 +1,15 @@
 package cookie
 
 import (
+	"crypto/hmac"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/xlgmokha/x/pkg/pls"
 )
 
 func TestOption(t *testing.T) {
@@ -49,5 +53,21 @@ func TestOption(t *testing.T) {
 			assert.Equal(t, expires, cookie.Expires)
 			assert.Equal(t, -1, cookie.MaxAge)
 		})
+	})
+
+	t.Run("WithSignedValue", func(t *testing.T) {
+		value := "1"
+		secret := "secret"
+		cookie := New("session", WithSignedValue(value, secret))
+
+		require.NotNil(t, cookie)
+		assert.NotEqual(t, "1", cookie.Value)
+		assert.NotEmpty(t, cookie.Value)
+
+		signature := pls.GenerateHMAC256([]byte(secret), []byte(value))
+		expected := fmt.Sprintf("%v--%v", value, string(signature))
+
+		assert.Equal(t, expected, cookie.Value)
+		assert.True(t, hmac.Equal([]byte(expected), []byte(cookie.Value)))
 	})
 }
