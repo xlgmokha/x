@@ -5,21 +5,24 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/xlgmokha/x/pkg/pls"
+	"github.com/xlgmokha/x/pkg/crypt"
 	"github.com/xlgmokha/x/pkg/x"
 )
 
 func With(with func(*http.Cookie)) x.Option[*http.Cookie] {
-	return func(c *http.Cookie) *http.Cookie {
-		with(c)
-		return c
-	}
+	return x.With[*http.Cookie](with)
 }
 
 func WithValue(value string) x.Option[*http.Cookie] {
 	return With(func(c *http.Cookie) {
 		c.Value = value
 	})
+}
+
+func WithSignedValue(value string, signer crypt.Signer) x.Option[*http.Cookie] {
+	signature, _ := signer.Sign([]byte(value))
+	expected := fmt.Sprintf("%v--%v", value, string(signature))
+	return WithValue(expected)
 }
 
 func WithPath(value string) x.Option[*http.Cookie] {
@@ -62,10 +65,4 @@ func WithExpiration(expires time.Time) x.Option[*http.Cookie] {
 			c.MaxAge = int(duration.Seconds())
 		}
 	})
-}
-
-func WithSignedValue(value string, secret string) x.Option[*http.Cookie] {
-	signature := pls.GenerateHMAC256([]byte(secret), []byte(value))
-	expected := fmt.Sprintf("%v--%v", value, string(signature))
-	return WithValue(expected)
 }

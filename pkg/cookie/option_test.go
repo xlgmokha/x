@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xlgmokha/x/pkg/crypt"
 	"github.com/xlgmokha/x/pkg/pls"
 )
 
@@ -58,7 +59,8 @@ func TestOption(t *testing.T) {
 	t.Run("WithSignedValue", func(t *testing.T) {
 		value := "1"
 		secret := "secret"
-		cookie := New("session", WithSignedValue(value, secret))
+		signer := crypt.NewHMACSigner([]byte(secret))
+		cookie := New("session", WithSignedValue(value, signer))
 
 		require.NotNil(t, cookie)
 		assert.NotEqual(t, "1", cookie.Value)
