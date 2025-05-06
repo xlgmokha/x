@@ -2,7 +2,6 @@ package crypt
 
 import (
 	"crypto/hmac"
-	"crypto/sha256"
 	"hash"
 
 	"github.com/xlgmokha/x/pkg/x"
@@ -11,13 +10,6 @@ import (
 type HMACSigner struct {
 	key     []byte
 	factory func() hash.Hash
-}
-
-func NewHMACSigner(key []byte) *HMACSigner {
-	return x.New[*HMACSigner](
-		WithAlgorithm(sha256.New),
-		WithKey(key),
-	)
 }
 
 func (s *HMACSigner) Sign(data []byte) ([]byte, error) {
