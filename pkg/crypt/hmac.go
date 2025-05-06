@@ -30,13 +30,13 @@ func (s *HMACSigner) Sign(data []byte) ([]byte, error) {
 }
 
 func WithAlgorithm(factory x.Factory[hash.Hash]) x.Option[*HMACSigner] {
-	return x.With[*HMACSigner](x.Configure[*HMACSigner](func(item *HMACSigner) {
+	return x.With[*HMACSigner](func(item *HMACSigner) {
 		item.factory = factory
-	}))
+	})
 }
 
 func WithKey(key []byte) x.Option[*HMACSigner] {
-	return x.With[*HMACSigner](x.Configure[*HMACSigner](func(item *HMACSigner) {
+	return x.With[*HMACSigner](func(item *HMACSigner) {
 		item.key = key
-	}))
+	})
 }

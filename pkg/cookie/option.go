@@ -9,7 +9,7 @@ import (
 	"github.com/xlgmokha/x/pkg/x"
 )
 
-func With(with func(*http.Cookie)) x.Option[*http.Cookie] {
+func With(with x.Configure[*http.Cookie]) x.Option[*http.Cookie] {
 	return x.With[*http.Cookie](with)
 }
 
