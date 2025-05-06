@@ -9,7 +9,7 @@ import (
 
 type HMACSigner struct {
 	key     []byte
-	factory func() hash.Hash
+	factory x.Factory[hash.Hash]
 }
 
 func WithAlgorithm(factory x.Factory[hash.Hash]) x.Option[*HMACSigner] {
