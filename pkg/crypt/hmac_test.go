@@ -6,7 +6,6 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
-	"fmt"
 	"hash"
 	"testing"
 
@@ -16,22 +15,29 @@ import (
 )
 
 func TestHMAC(t *testing.T) {
-	t.Run("Sign", func(t *testing.T) {
-		data := x.Must(pls.GenerateRandomBytes(64))
+	data := x.Must(pls.GenerateRandomBytes(64))
 
-		for _, hash := range []x.Factory[hash.Hash]{md5.New, sha1.New, sha256.New, sha512.New} {
-			t.Run(fmt.Sprintf("generates an HMAC %v signature", hash), func(t *testing.T) {
-				key := x.Must(pls.GenerateRandomBytes(32))
-				signer := x.New[*HMACSigner](WithKey(key), WithAlgorithm(hash))
-				mac := hmac.New(hash, key)
-				mac.Write(data)
-				expected := mac.Sum(nil)
+	for _, hash := range []x.Factory[hash.Hash]{md5.New, sha1.New, sha256.New, sha512.New} {
+		key := x.Must(pls.GenerateRandomBytes(32))
+		signer := x.New[*HMACSigner](WithKey(key), WithAlgorithm(hash))
 
-				result := x.Must(signer.Sign(data))
+		mac := hmac.New(hash, key)
+		mac.Write(data)
+		expectedSignature := mac.Sum(nil)
 
-				assert.NotEmpty(t, result)
-				assert.Equal(t, expected, result)
-			})
-		}
-	})
+		t.Run("Sign", func(t *testing.T) {
+			result := x.Must(signer.Sign(data))
+
+			assert.NotEmpty(t, result)
+			assert.Equal(t, expectedSignature, result)
+		})
+
+		t.Run("Verify", func(t *testing.T) {
+			assert.True(t, signer.Verify(data, expectedSignature))
+
+			assert.False(t, signer.Verify(data, []byte{}))
+			assert.False(t, signer.Verify(data, x.Must(pls.GenerateRandomBytes(32))))
+			assert.False(t, signer.Verify(x.Must(pls.GenerateRandomBytes(32)), expectedSignature))
+		})
+	}
 }
