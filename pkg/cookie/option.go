@@ -21,8 +21,8 @@ func WithValue(value string) x.Option[*http.Cookie] {
 
 func WithSignedValue(value string, signer crypt.Signer) x.Option[*http.Cookie] {
 	signature, _ := signer.Sign([]byte(value))
-	expected := fmt.Sprintf("%v--%v", value, string(signature))
-	return WithValue(expected)
+	delimiter := "--"
+	return WithValue(fmt.Sprintf("%v%v%v", value, delimiter, string(signature)))
 }
 
 func WithPath(value string) x.Option[*http.Cookie] {
