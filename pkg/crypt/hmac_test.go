@@ -16,24 +16,14 @@ import (
 )
 
 func TestHMAC(t *testing.T) {
-	key := x.Must(pls.GenerateRandomBytes(32))
-
 	t.Run("Sign", func(t *testing.T) {
 		data := x.Must(pls.GenerateRandomBytes(64))
 
-		tt := []struct {
-			h x.Factory[hash.Hash]
-		}{
-			{h: md5.New},
-			{h: sha1.New},
-			{h: sha256.New},
-			{h: sha512.New},
-		}
-
-		for _, test := range tt {
-			t.Run(fmt.Sprintf("generates an HMAC %v signature", test.h), func(t *testing.T) {
-				signer := x.New[*HMACSigner](WithKey(key), WithAlgorithm(test.h))
-				mac := hmac.New(test.h, key)
+		for _, hash := range []x.Factory[hash.Hash]{md5.New, sha1.New, sha256.New, sha512.New} {
+			t.Run(fmt.Sprintf("generates an HMAC %v signature", hash), func(t *testing.T) {
+				key := x.Must(pls.GenerateRandomBytes(32))
+				signer := x.New[*HMACSigner](WithKey(key), WithAlgorithm(hash))
+				mac := hmac.New(hash, key)
 				mac.Write(data)
 				expected := mac.Sum(nil)
 
