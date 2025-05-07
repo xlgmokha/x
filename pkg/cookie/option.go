@@ -1,6 +1,7 @@
 package cookie
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"time"
@@ -23,6 +24,14 @@ func WithSignedValue(value string, signer crypt.Signer) x.Option[*http.Cookie] {
 	signature, _ := signer.Sign([]byte(value))
 	delimiter := "--"
 	return WithValue(fmt.Sprintf("%v%v%v", value, delimiter, string(signature)))
+}
+
+func WithEncodedValue(data []byte, encoding *base64.Encoding) x.Option[*http.Cookie] {
+	return WithValue(encoding.EncodeToString(data))
+}
+
+func WithBase64Value(data []byte) x.Option[*http.Cookie] {
+	return WithEncodedValue(data, base64.URLEncoding)
 }
 
 func WithPath(value string) x.Option[*http.Cookie] {

@@ -3,6 +3,7 @@ package cookie
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xlgmokha/x/pkg/crypt"
+	"github.com/xlgmokha/x/pkg/pls"
 	"github.com/xlgmokha/x/pkg/x"
 )
 
@@ -78,5 +80,14 @@ func TestOption(t *testing.T) {
 
 		assert.Equal(t, expected, cookie.Value)
 		assert.True(t, hmac.Equal([]byte(expected), []byte(cookie.Value)))
+	})
+
+	t.Run("WithBase64EncodedValue", func(t *testing.T) {
+		value := x.Must(pls.GenerateRandomBytes(32))
+		cookie := New("session", WithBase64Value(value))
+
+		require.NotNil(t, cookie)
+		expected := base64.URLEncoding.EncodeToString(value)
+		assert.Equal(t, expected, cookie.Value)
 	})
 }
