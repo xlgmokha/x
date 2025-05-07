@@ -14,6 +14,12 @@ func With(with x.Configure[*http.Cookie]) x.Option[*http.Cookie] {
 	return x.With[*http.Cookie](with)
 }
 
+func WithName(name string) x.Option[*http.Cookie] {
+	return With(func(c *http.Cookie) {
+		c.Name = name
+	})
+}
+
 func WithValue(value string) x.Option[*http.Cookie] {
 	return With(func(c *http.Cookie) {
 		c.Value = value

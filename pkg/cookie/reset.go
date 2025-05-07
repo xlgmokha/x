@@ -8,11 +8,9 @@ import (
 )
 
 func Reset(name string, options ...x.Option[*http.Cookie]) *http.Cookie {
-	options = append(
+	return New(name, append(
 		options,
 		WithValue(""),
 		WithExpiration(time.Unix(0, 0)),
-	)
-
-	return New(name, options...)
+	)...)
 }
