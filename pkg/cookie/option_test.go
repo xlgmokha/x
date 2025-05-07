@@ -76,7 +76,7 @@ func TestOption(t *testing.T) {
 		mac.Write([]byte(value))
 		signature := mac.Sum(nil)
 
-		expected := fmt.Sprintf("%v--%v", value, string(signature))
+		expected := fmt.Sprintf("%v--%v", value, base64.URLEncoding.EncodeToString(signature))
 
 		assert.Equal(t, expected, cookie.Value)
 		assert.True(t, hmac.Equal([]byte(expected), []byte(cookie.Value)))

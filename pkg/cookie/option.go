@@ -29,7 +29,8 @@ func WithValue(value string) x.Option[*http.Cookie] {
 func WithSignedValue(value string, signer crypt.Signer) x.Option[*http.Cookie] {
 	signature, _ := signer.Sign([]byte(value))
 	delimiter := "--"
-	return WithValue(fmt.Sprintf("%v%v%v", value, delimiter, string(signature)))
+	encodedSignature := base64.URLEncoding.EncodeToString(signature)
+	return WithValue(fmt.Sprintf("%v%v%v", value, delimiter, encodedSignature))
 }
 
 func WithEncodedValue(data []byte, encoding *base64.Encoding) x.Option[*http.Cookie] {
