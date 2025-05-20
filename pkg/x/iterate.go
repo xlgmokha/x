@@ -1,5 +1,7 @@
 package x
 
+import "slices"
+
 type Mapper[T any, K any] func(T) K
 type Predicate[T any] func(T) bool
 type Visitor[T any] func(T)
@@ -50,4 +52,9 @@ func Inject[TInput any, TOutput any](items []TInput, memo TOutput, f func(TOutpu
 
 func Prepend[T any](rest []T, beginning ...T) []T {
 	return append(beginning, rest...)
+}
+
+func Reverse[T any](items []T) []T {
+	slices.Reverse(items)
+	return items
 }
