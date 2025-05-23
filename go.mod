@@ -1,6 +1,6 @@
 module github.com/xlgmokha/x
 
-go 1.24.3
+go 1.24
 
 require (
 	github.com/golobby/container/v3 v3.3.2
