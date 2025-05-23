@@ -6,7 +6,6 @@
 
 ### Prerequisites
 
-- [mise](https://mise.jdx.dev/)
 - [make](https://www.gnu.org/software/make/)
 
 ### Installation
@@ -22,13 +21,7 @@
    $ cd x
    ```
 
-3. Install the tools:
-
-   ```bash
-   $ make setup
-   ```
-
-4. Run the test suite:
+3. Run the test suite:
 
    ```bash
    $ make test

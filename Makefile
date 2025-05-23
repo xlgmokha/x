@@ -9,10 +9,6 @@ which:
 clean:
 	@rm -f syslogs which
 
-setup:
-	@mise install
-	@go install tool
-
 build: syslogs which
 
 test:
