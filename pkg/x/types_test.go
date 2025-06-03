@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTypes(t *testing.T) {
@@ -148,6 +149,16 @@ func TestTypes(t *testing.T) {
 			assert.True(t, IsPresent[bool](true))
 			assert.True(t, IsPresent[string]("hello"))
 			assert.True(t, IsPresent[*http.Client](&http.Client{}))
+		})
+	})
+
+	t.Run("ToMap", func(t *testing.T) {
+		t.Run("converts a string", func(t *testing.T) {
+			result := ToMap("string")
+
+			require.NotNil(t, result)
+			assert.Contains(t, result, "item")
+			assert.Equal(t, result["item"], "string")
 		})
 	})
 }

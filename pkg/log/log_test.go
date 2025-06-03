@@ -78,4 +78,28 @@ func TestLog(t *testing.T) {
 		require.Contains(t, items, "remote_host")
 		assert.Contains(t, items["remote_host"], "127.0.0.1")
 	})
+
+	t.Run("Debug", func(t *testing.T) {
+		t.Run("logs the item and returns it", func(t *testing.T) {
+			var b bytes.Buffer
+			writer := bufio.NewWriter(&b)
+			log := New(writer, Fields{})
+
+			ctx := log.WithContext(t.Context())
+			item := "subject"
+			result := Debug(ctx, item)
+
+			zerolog.Ctx(ctx).Print()
+
+			require.NoError(t, writer.Flush())
+
+			items, err := serde.FromJSON[map[string]string](bufio.NewReader(&b))
+			require.NoError(t, err)
+
+			require.Contains(t, items, "item")
+			assert.Equal(t, "subject", items["item"])
+
+			assert.Equal(t, item, result)
+		})
+	})
 }
