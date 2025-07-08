@@ -26,6 +26,13 @@ redis: redis-server --port 6379
 scheduler: ./scheduler -interval 60s
 ```
 
+Environment variables are expanded using `$VAR` and `${VAR}` syntax:
+
+```
+web: ./server -port $PORT -host $HOST
+worker: /usr/bin/env -i - APP_ENV="$APP_ENV" ./worker
+```
+
 ## Installation
 
 ```dockerfile
