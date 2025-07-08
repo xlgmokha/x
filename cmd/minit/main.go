@@ -29,7 +29,7 @@ func main() {
 			continue
 		}
 
-		args := strings.Fields(strings.TrimSpace(parts[1]))
+		args := strings.Fields(os.ExpandEnv(strings.TrimSpace(parts[1])))
 		if len(args) == 0 {
 			continue
 		}
