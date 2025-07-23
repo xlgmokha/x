@@ -34,3 +34,18 @@ func TestMust(t *testing.T) {
 		})
 	})
 }
+
+func TestTry(t *testing.T) {
+	t.Run("does not panic", func(t *testing.T) {
+		assert.NotPanics(t, func() {
+			Try(0, errors.New("Ooops..."))
+		})
+	})
+
+	t.Run("returns the value", func(t *testing.T) {
+		assert.NotPanics(t, func() {
+			assert.Equal(t, 42, Try(42, nil))
+			assert.Equal(t, "hello", Try("hello", errors.New("Error")))
+		})
+	})
+}

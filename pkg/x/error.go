@@ -14,3 +14,7 @@ func Must[T any](item T, err error) T {
 	Check(err)
 	return item
 }
+
+func Try[T any](item T, _err error) T {
+	return item
+}
