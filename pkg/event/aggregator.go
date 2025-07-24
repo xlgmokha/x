@@ -1,16 +1,25 @@
 package event
 
-type Event any
-type Subscription func(any)
+import "github.com/xlgmokha/x/pkg/x"
 
 type Aggregator struct {
 	subscriptions map[Event][]Subscription
 }
 
 func New() *Aggregator {
-	return &Aggregator{
-		subscriptions: map[Event][]Subscription{},
-	}
+	return x.New[*Aggregator](
+		WithoutSubscriptions(),
+	)
+}
+
+func WithoutSubscriptions() x.Option[*Aggregator] {
+	return WithSubscriptions(map[Event][]Subscription{})
+}
+
+func WithSubscriptions(subscriptions map[Event][]Subscription) x.Option[*Aggregator] {
+	return x.With(func(item *Aggregator) {
+		item.subscriptions = subscriptions
+	})
 }
 
 func (a *Aggregator) Subscribe(event Event, f Subscription) {

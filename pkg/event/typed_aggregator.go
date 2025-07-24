@@ -1,17 +1,23 @@
 package event
 
+import "github.com/xlgmokha/x/pkg/x"
+
 type TypedAggregator[T any] struct {
 	aggregator *Aggregator
 }
 
 func NewAggregator[T any]() *TypedAggregator[T] {
-	return NewWith[T](New())
+	return NewWith[T](x.New(WithoutSubscriptions()))
 }
 
 func NewWith[T any](aggregator *Aggregator) *TypedAggregator[T] {
-	return &TypedAggregator[T]{
-		aggregator: aggregator,
-	}
+	return x.New[*TypedAggregator[T]](WithAggregator[T](aggregator))
+}
+
+func WithAggregator[T any](aggregator *Aggregator) x.Option[*TypedAggregator[T]] {
+	return x.With(func(item *TypedAggregator[T]) {
+		item.aggregator = aggregator
+	})
 }
 
 func (a *TypedAggregator[T]) SubscribeTo(event Event, f func(T)) {
@@ -20,7 +26,6 @@ func (a *TypedAggregator[T]) SubscribeTo(event Event, f func(T)) {
 			f(item)
 		}
 	})
-
 }
 
 func (a *TypedAggregator[T]) Publish(event Event, message T) {
