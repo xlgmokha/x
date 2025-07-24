@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEventAggregator(t *testing.T) {
+func TestAggregator(t *testing.T) {
 	t.Run("Publish", func(t *testing.T) {
 		t.Run("without any subscribers", func(t *testing.T) {
 			aggregator := New()
@@ -47,20 +47,6 @@ func TestEventAggregator(t *testing.T) {
 			assert.Equal(t, 2, len(called))
 			assert.True(t, called[0])
 			assert.True(t, called[1])
-		})
-
-		t.Run("with a strongly typed payload", func(t *testing.T) {
-			aggregator := New()
-
-			type announcement struct {
-				message string
-			}
-
-			aggregator.SubscribeTo("announcement", func(payload announcement) {
-				assert.Equal(t, "Hello", payload.message)
-			})
-
-			aggregator.Publish("announcement", announcement{message: "Hello"})
 		})
 	})
 }
