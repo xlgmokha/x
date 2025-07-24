@@ -6,12 +6,6 @@ type Aggregator struct {
 	subscriptions map[Event][]Subscription
 }
 
-func New() *Aggregator {
-	return x.New[*Aggregator](
-		WithoutSubscriptions(),
-	)
-}
-
 func WithoutSubscriptions() x.Option[*Aggregator] {
 	return WithSubscriptions(map[Event][]Subscription{})
 }

@@ -7,7 +7,13 @@ type TypedAggregator[T any] struct {
 }
 
 func NewAggregator[T any]() *TypedAggregator[T] {
-	return NewWith[T](x.New(WithoutSubscriptions()))
+	return x.New[*TypedAggregator[T]](
+		WithAggregator[T](
+			x.New(
+				WithoutSubscriptions(),
+			),
+		),
+	)
 }
 
 func NewWith[T any](aggregator *Aggregator) *TypedAggregator[T] {

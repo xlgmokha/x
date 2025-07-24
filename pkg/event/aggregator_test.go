@@ -4,18 +4,19 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/xlgmokha/x/pkg/x"
 )
 
 func TestAggregator(t *testing.T) {
 	t.Run("Publish", func(t *testing.T) {
 		t.Run("without any subscribers", func(t *testing.T) {
-			aggregator := New()
+			aggregator := x.New(WithoutSubscriptions())
 
 			aggregator.Publish("announcements.engineering", "Business, Business, Business... Numbers!")
 		})
 
 		t.Run("with a single subscriber", func(t *testing.T) {
-			aggregator := New()
+			aggregator := x.New(WithoutSubscriptions())
 			called := false
 
 			aggregator.Subscribe("announcement", func(message any) {
@@ -29,7 +30,7 @@ func TestAggregator(t *testing.T) {
 		})
 
 		t.Run("with multiple subscribers", func(t *testing.T) {
-			aggregator := New()
+			aggregator := x.New(WithoutSubscriptions())
 			called := map[int]bool{}
 
 			aggregator.Subscribe("announcement", func(message any) {
