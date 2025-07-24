@@ -10,13 +10,13 @@ import (
 func TestAggregator(t *testing.T) {
 	t.Run("Publish", func(t *testing.T) {
 		t.Run("without any subscribers", func(t *testing.T) {
-			aggregator := x.New(WithoutSubscriptions())
+			aggregator := x.New(WithDefaults())
 
 			aggregator.Publish("announcements.engineering", "Business, Business, Business... Numbers!")
 		})
 
 		t.Run("with a single subscriber", func(t *testing.T) {
-			aggregator := x.New(WithoutSubscriptions())
+			aggregator := x.New(WithDefaults())
 			called := false
 
 			aggregator.Subscribe("announcement", func(message any) {
@@ -30,7 +30,7 @@ func TestAggregator(t *testing.T) {
 		})
 
 		t.Run("with multiple subscribers", func(t *testing.T) {
-			aggregator := x.New(WithoutSubscriptions())
+			aggregator := x.New(WithDefaults())
 			called := map[int]bool{}
 
 			aggregator.Subscribe("announcement", func(message any) {

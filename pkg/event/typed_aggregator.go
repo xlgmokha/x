@@ -9,7 +9,7 @@ type TypedAggregator[T any] struct {
 func New[T any]() *TypedAggregator[T] {
 	return NewWith[T](
 		x.New(
-			WithoutSubscriptions(),
+			WithDefaults(),
 		),
 	)
 }
