@@ -7,17 +7,19 @@ type TypedAggregator[T any] struct {
 }
 
 func New[T any]() *TypedAggregator[T] {
-	return x.New[*TypedAggregator[T]](
-		WithAggregator[T](
-			x.New(
-				WithoutSubscriptions(),
-			),
+	return NewWith[T](
+		x.New(
+			WithoutSubscriptions(),
 		),
 	)
 }
 
 func NewWith[T any](aggregator *Aggregator) *TypedAggregator[T] {
-	return x.New[*TypedAggregator[T]](WithAggregator[T](aggregator))
+	return x.New[*TypedAggregator[T]](
+		WithAggregator[T](
+			aggregator,
+		),
+	)
 }
 
 func WithAggregator[T any](aggregator *Aggregator) x.Option[*TypedAggregator[T]] {
