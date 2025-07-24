@@ -18,10 +18,6 @@ func WithDefaults() x.Option[*Aggregator] {
 	})
 }
 
-func WithoutSubscriptions() x.Option[*Aggregator] {
-	return WithSubscriptions(map[Event][]Subscription{})
-}
-
 func WithSubscriptions(subscriptions map[Event][]Subscription) x.Option[*Aggregator] {
 	return x.With(func(item *Aggregator) {
 		item.subscriptions = subscriptions
