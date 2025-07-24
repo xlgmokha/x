@@ -4,9 +4,13 @@ type TypedAggregator[T any] struct {
 	aggregator *Aggregator
 }
 
-func NewTypedAggregator[T any]() *TypedAggregator[T] {
+func NewAggregator[T any]() *TypedAggregator[T] {
+	return NewWith[T](New())
+}
+
+func NewWith[T any](aggregator *Aggregator) *TypedAggregator[T] {
 	return &TypedAggregator[T]{
-		aggregator: New(),
+		aggregator: aggregator,
 	}
 }
 
