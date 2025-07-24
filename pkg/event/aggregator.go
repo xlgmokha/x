@@ -18,12 +18,6 @@ func WithDefaults() x.Option[*Aggregator] {
 	})
 }
 
-func WithSubscriptions(subscriptions map[Event][]Subscription) x.Option[*Aggregator] {
-	return x.With(func(item *Aggregator) {
-		item.subscriptions = subscriptions
-	})
-}
-
 func (a *Aggregator) Subscribe(event Event, f Subscription) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
