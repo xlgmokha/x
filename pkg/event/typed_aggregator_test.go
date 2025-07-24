@@ -13,7 +13,7 @@ func TestTypedAggregator(t *testing.T) {
 
 	t.Run("Publish", func(t *testing.T) {
 		t.Run("without any subscribers", func(t *testing.T) {
-			aggregator := NewAggregator[announcement]()
+			aggregator := New[announcement]()
 
 			aggregator.Publish("announcement", announcement{
 				message: "Business, Business, Business... Numbers!",
@@ -22,7 +22,7 @@ func TestTypedAggregator(t *testing.T) {
 
 		t.Run("with a single subscription", func(t *testing.T) {
 			called := false
-			aggregator := NewAggregator[announcement]()
+			aggregator := New[announcement]()
 
 			aggregator.SubscribeTo("announcement", func(payload announcement) {
 				called = true
@@ -35,7 +35,7 @@ func TestTypedAggregator(t *testing.T) {
 		})
 
 		t.Run("with multiple subscribers", func(t *testing.T) {
-			aggregator := NewAggregator[announcement]()
+			aggregator := New[announcement]()
 			called := map[int]bool{}
 
 			aggregator.SubscribeTo("announcement", func(payload announcement) {
