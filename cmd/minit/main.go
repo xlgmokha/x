@@ -7,7 +7,9 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -16,6 +18,7 @@ func main() {
 
 	var cmds []*exec.Cmd
 	var wg sync.WaitGroup
+	var shutdown int32
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -42,11 +45,22 @@ func main() {
 		cmds = append(cmds, cmd)
 
 		wg.Add(1)
-		go func(c *exec.Cmd) {
+		go func(args []string) {
 			defer wg.Done()
-			c.Start()
-			c.Wait()
-		}(cmd)
+			for atomic.LoadInt32(&shutdown) == 0 {
+				cmd := exec.Command(args[0], args[1:]...)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+				if cmd.Start() != nil {
+					time.Sleep(2 * time.Second)
+					continue
+				}
+				cmd.Wait()
+				time.Sleep(time.Second)
+			}
+		}(args)
 	}
 
 	sigChan := make(chan os.Signal, 1)
@@ -54,6 +68,8 @@ func main() {
 
 	go func() {
 		<-sigChan
+		atomic.StoreInt32(&shutdown, 1)
+
 		for _, cmd := range cmds {
 			if cmd.Process != nil {
 				syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
