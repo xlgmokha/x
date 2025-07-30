@@ -5,7 +5,10 @@ type Option[T any] func(T) T
 type Factory[T any] func() T
 
 func New[T any](options ...Option[T]) T {
-	item := Default[T]()
+	return NewWith[T](Default[T](), options...)
+}
+
+func NewWith[T any](item T, options ...Option[T]) T {
 	for _, option := range options {
 		item = option(item)
 	}
