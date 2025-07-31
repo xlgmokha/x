@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"log"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/xlgmokha/x/pkg/procfile"
 )
 
 var procfilePath *string
@@ -23,57 +24,32 @@ func init() {
 }
 
 func main() {
-	file, err := os.Open(*procfilePath)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer file.Close()
-
-	var cmds []*exec.Cmd
 	var wg sync.WaitGroup
 	var shutdown int32
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
+	for _, path := range strings.Split(*procfilePath, ",") {
+		for _, proc := range procfile.Parse(path) {
+			wg.Add(1)
+			go func(proc *procfile.Proc) {
+				defer wg.Done()
+				var cmd *exec.Cmd
 
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
-			continue
-		}
+				for atomic.LoadInt32(&shutdown) == 0 {
+					cmd = proc.NewCommand()
 
-		args := strings.Fields(os.ExpandEnv(strings.TrimSpace(parts[1])))
-		if len(args) == 0 {
-			continue
-		}
-
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-		cmds = append(cmds, cmd)
-
-		wg.Add(1)
-		go func(args []string) {
-			defer wg.Done()
-			for atomic.LoadInt32(&shutdown) == 0 {
-				cmd := exec.Command(args[0], args[1:]...)
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
-				cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-				if cmd.Start() != nil {
-					time.Sleep(2 * time.Second)
-					continue
+					if cmd.Start() != nil {
+						time.Sleep(2 * time.Second)
+						continue
+					}
+					cmd.Wait()
+					time.Sleep(time.Second)
 				}
-				cmd.Wait()
-				time.Sleep(time.Second)
-			}
-		}(args)
+
+				if cmd != nil && cmd.Process != nil {
+					syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+				}
+			}(proc)
+		}
 	}
 
 	sigChan := make(chan os.Signal, 1)
@@ -82,12 +58,6 @@ func main() {
 	go func() {
 		<-sigChan
 		atomic.StoreInt32(&shutdown, 1)
-
-		for _, cmd := range cmds {
-			if cmd.Process != nil {
-				syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
-			}
-		}
 	}()
 
 	wg.Wait()
