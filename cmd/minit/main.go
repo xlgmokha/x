@@ -28,7 +28,12 @@ func main() {
 	var shutdown int32
 
 	for _, path := range strings.Split(*procfilePath, ",") {
-		for _, proc := range procfile.Parse(path) {
+		procs, err := procfile.ParseFile(path)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		for _, proc := range procs {
 			wg.Add(1)
 			go func(proc *procfile.Proc) {
 				defer wg.Done()

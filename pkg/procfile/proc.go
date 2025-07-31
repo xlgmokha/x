@@ -2,7 +2,7 @@ package procfile
 
 import (
 	"bufio"
-	"log"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -21,13 +21,17 @@ func New(name string, args []string) *Proc {
 	}
 }
 
-func Parse(procfilePath string) []*Proc {
-	file, err := os.Open(procfilePath)
+func ParseFile(path string) ([]*Proc, error) {
+	file, err := os.Open(path)
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 	defer file.Close()
 
+	return Parse(file), nil
+}
+
+func Parse(file io.Reader) []*Proc {
 	var processes []*Proc
 	scanner := bufio.NewScanner(file)
 
