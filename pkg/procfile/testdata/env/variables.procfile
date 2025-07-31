@@ -1,0 +1,3 @@
+web: ./server -port $PORT
+worker: ./worker -env $NODE_ENV
+database: psql -h $DB_HOST -U $DB_USER

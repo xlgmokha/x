@@ -1,0 +1,3 @@
+web echo 'missing colon'
+worker: echo 'this one is valid'
+invalid line without colon

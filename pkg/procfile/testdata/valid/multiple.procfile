@@ -1,0 +1,3 @@
+web: ./server -port 8080
+worker: ./worker -queue tasks
+redis: redis-server --port 6379
