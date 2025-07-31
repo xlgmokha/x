@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -17,7 +18,11 @@ func main() {
 	procfilePath := flag.String("f", "Procfile", "path to Procfile")
 	flag.Parse()
 
-	file, _ := os.Open(*procfilePath)
+	file, err := os.Open(*procfilePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
 	defer file.Close()
 
 	var cmds []*exec.Cmd
