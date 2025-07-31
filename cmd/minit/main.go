@@ -93,6 +93,8 @@ func main() {
 		for sig := range sigChan {
 			if sig == syscall.SIGINT || sig == syscall.SIGTERM {
 				atomic.StoreInt32(&shutdown, 1)
+				forwardSignalToAll(sig)
+				return
 			}
 
 			forwardSignalToAll(sig)
