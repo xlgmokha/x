@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -14,14 +14,18 @@ import (
 	"time"
 )
 
-func main() {
-	procfilePath := flag.String("f", "Procfile", "path to Procfile")
-	flag.Parse()
+var procfilePath *string
 
+func init() {
+	procfilePath = flag.String("f", "Procfile", "path to Procfile")
+	flag.Parse()
+	log.SetFlags(0)
+}
+
+func main() {
 	file, err := os.Open(*procfilePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+		log.Fatalln(err)
 	}
 	defer file.Close()
 
