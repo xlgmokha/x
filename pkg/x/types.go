@@ -36,3 +36,9 @@ func IsSlice[T any](item T) bool {
 func Is[T any](item T, kind reflect.Kind) bool {
 	return reflect.TypeOf(item).Kind() == kind
 }
+
+func ToMap[T any](item T) map[string]interface{} {
+	return map[string]interface{}{
+		"item": item,
+	}
+}
