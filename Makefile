@@ -1,16 +1,21 @@
-.PHONY: clean setup build test
+.PHONY: build clean test vet syslogs which
 
 syslogs:
-	@go build -o syslogs ./cmd/syslogs/main.go
+	@mkdir -p bin
+	@go build -o bin/syslogs ./cmd/syslogs
 
 which:
-	@go build -o which ./cmd/which/main.go
-
-clean:
-	@rm -f syslogs which
+	@mkdir -p bin
+	@go build -o bin/which ./cmd/which
 
 build: syslogs which
 
+clean:
+	@rm -rf bin
+
+vet:
+	@go vet ./...
+
 test:
 	@go clean -testcache
-	@go test -shuffle=on ./...
+	@go test -race -shuffle=on ./...
