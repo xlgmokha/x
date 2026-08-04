@@ -1,0 +1,7 @@
+# This is a comment
+web: echo 'Web server'
+
+# Another comment
+worker: echo 'Background worker'
+
+# Empty lines and comments should be ignored
