@@ -37,7 +37,7 @@ worker: /usr/bin/env -i - APP_ENV="$APP_ENV" ./worker
 
 ```dockerfile
 FROM golang:alpine AS minit-builder
-RUN go install github.com/xlgmokha/minit@latest
+RUN go install github.com/xlgmokha/x/cmd/minit@latest
 ```
 
 ## Docker Example
@@ -48,7 +48,7 @@ Combine minit with [dumb-init](https://github.com/Yelp/dumb-init) for proper PID
 
 # Build stage for minit
 FROM golang:alpine AS minit-builder
-RUN go install github.com/xlgmokha/minit@latest
+RUN go install github.com/xlgmokha/x/cmd/minit@latest
 
 # Build stage for dumb-init
 FROM debian:bookworm-slim AS dumb-init-builder
