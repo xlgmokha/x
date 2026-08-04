@@ -1,4 +1,4 @@
-.PHONY: build clean test vet syslogs which
+.PHONY: build clean test vet syslogs which minit http-server proxy-server
 
 syslogs:
 	@mkdir -p bin
@@ -8,7 +8,19 @@ which:
 	@mkdir -p bin
 	@go build -o bin/which ./cmd/which
 
-build: syslogs which
+minit:
+	@mkdir -p bin
+	@go build -o bin/minit ./cmd/minit
+
+http-server:
+	@mkdir -p bin
+	@go build -o bin/http-server ./cmd/http-server
+
+proxy-server:
+	@mkdir -p bin
+	@go build -o bin/proxy-server ./cmd/proxy-server
+
+build: syslogs which minit http-server proxy-server
 
 clean:
 	@rm -rf bin
