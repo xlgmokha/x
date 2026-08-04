@@ -101,8 +101,8 @@ func TestWithRequestHeader(t *testing.T) {
 
 func TestWithContentType(t *testing.T) {
 	type example struct {
-		ID   int    `json: "id" jsonapi:"primary,examples"`
-		Name string `json: "name" jsonapi:"attr,name"`
+		ID   int    `json:"id" jsonapi:"primary,examples"`
+		Name string `json:"name" jsonapi:"attr,name"`
 	}
 	item := &example{ID: 1, Name: "example"}
 
@@ -118,6 +118,26 @@ func TestWithContentType(t *testing.T) {
 			assert.Equal(t, "example", result.Name)
 		})
 	}
+}
+
+func TestWithContentTypeJSONFieldNames(t *testing.T) {
+	type example struct {
+		ID   int    `json:"id" jsonapi:"primary,examples"`
+		Name string `json:"name" jsonapi:"attr,name"`
+	}
+
+	t.Run("honours the json struct tags", func(t *testing.T) {
+		r := Request("GET", "/example", WithContentType(&example{ID: 1, Name: "example"}, serde.JSON))
+		require.NotNil(t, r)
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+
+		assert.Contains(t, string(body), `"id"`)
+		assert.Contains(t, string(body), `"name"`)
+		assert.NotContains(t, string(body), `"ID"`)
+		assert.NotContains(t, string(body), `"Name"`)
+	})
 }
 
 func TestWithRequestBody(t *testing.T) {
