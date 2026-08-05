@@ -1,46 +1,67 @@
 package mapper
 
 import (
-	"fmt"
 	"reflect"
+	"sync"
+
+	"github.com/xlgmokha/x/pkg/x"
 )
 
 type Mapping[TInput any, TOutput any] func(TInput) TOutput
 
-var mappings map[string]interface{}
+type key struct {
+	input  reflect.Type
+	output reflect.Type
+}
+
+var (
+	mu       sync.RWMutex
+	mappings map[key]interface{}
+)
 
 func init() {
-	mappings = map[string]interface{}{}
+	mappings = map[key]interface{}{}
 }
 
 func Register[Input any, Output any](mapping Mapping[Input, Output]) {
+	mu.Lock()
+	defer mu.Unlock()
+
 	mappings[keyFor[Input, Output]()] = mapping
 }
 
 func MapFrom[Input any, Output any](input Input) Output {
-	if mapping, ok := mappings[keyFor[Input, Output]()]; ok {
-		return mapping.(Mapping[Input, Output])(input)
+	if mapping, ok := mappingFor[Input, Output](); ok {
+		return mapping(input)
 	}
-	var output Output
-	return output
+	return x.Zero[Output]()
+}
+
+func mappingFor[Input any, Output any]() (Mapping[Input, Output], bool) {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	mapping, ok := mappings[keyFor[Input, Output]()]
+	if !ok {
+		return nil, false
+	}
+	return mapping.(Mapping[Input, Output]), true
 }
 
 func MapEachFrom[Input any, Output any](input []Input) []Output {
-	var zero Output
-	zeroValue := reflect.Zero(reflect.TypeOf(zero))
-
 	results := []Output{}
+
+	mapping, ok := mappingFor[Input, Output]()
+	if !ok {
+		return results
+	}
+
 	for _, item := range input {
-		tmp := MapFrom[Input, Output](item)
-		if zeroValue != reflect.ValueOf(tmp) {
-			results = append(results, tmp)
-		}
+		results = append(results, mapping(item))
 	}
 	return results
 }
 
-func keyFor[Input any, Output any]() string {
-	var input Input
-	var output Output
-	return fmt.Sprintf("%v-%v", reflect.TypeOf(input), reflect.TypeOf(output))
+func keyFor[Input any, Output any]() key {
+	return key{input: reflect.TypeFor[Input](), output: reflect.TypeFor[Output]()}
 }

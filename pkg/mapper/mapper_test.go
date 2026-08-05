@@ -2,6 +2,8 @@ package mapper
 
 import (
 	"fmt"
+	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +11,10 @@ import (
 )
 
 type unregisteredType struct{}
+
+type greeter interface{ Greet() string }
+
+type farewell interface{ Bye() string }
 
 type testObject struct {
 	GivenName  string
@@ -73,5 +79,60 @@ func TestMapper(t *testing.T) {
 			require.NotNil(t, results)
 			assert.Equal(t, 0, len(results))
 		})
+	})
+}
+
+func TestMapperInterfaceTypes(t *testing.T) {
+	Register[greeter, string](func(item greeter) string {
+		return "hello"
+	})
+
+	t.Run("does not collide with another interface type", func(t *testing.T) {
+		assert.NotPanics(t, func() {
+			assert.Equal(t, "", MapFrom[farewell, string](nil))
+		})
+	})
+}
+
+type raceInput struct{}
+
+type raceOutput struct{}
+
+func TestMapperConcurrentRegister(t *testing.T) {
+	t.Run("does not race", func(t *testing.T) {
+		var wg sync.WaitGroup
+
+		for range 8 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				Register[*raceInput, *raceOutput](func(item *raceInput) *raceOutput {
+					return &raceOutput{}
+				})
+			}()
+		}
+
+		wg.Wait()
+	})
+}
+
+func TestMapEachFromZeroResults(t *testing.T) {
+	Register[int, string](func(item int) string {
+		if item == 0 {
+			return ""
+		}
+		return strconv.Itoa(item)
+	})
+
+	t.Run("keeps a mapped result that is the zero value", func(t *testing.T) {
+		results := MapEachFrom[int, string]([]int{0, 1, 2})
+
+		assert.Equal(t, []string{"", "1", "2"}, results)
+	})
+
+	t.Run("drops every item when no mapping is registered", func(t *testing.T) {
+		results := MapEachFrom[int, bool]([]int{0, 1, 2})
+
+		assert.Empty(t, results)
 	})
 }
