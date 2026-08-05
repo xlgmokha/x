@@ -6,7 +6,7 @@ func Default[T any]() T {
 	item := Zero[T]()
 
 	if IsPtr[T](item) {
-		return reflect.New(reflect.TypeOf(item).Elem()).Interface().(T)
+		return reflect.New(reflect.TypeFor[T]().Elem()).Interface().(T)
 	}
 
 	return item
@@ -33,6 +33,6 @@ func IsSlice[T any](item T) bool {
 	return Is[T](item, reflect.Slice)
 }
 
-func Is[T any](item T, kind reflect.Kind) bool {
-	return reflect.TypeOf(item).Kind() == kind
+func Is[T any](_ T, kind reflect.Kind) bool {
+	return reflect.TypeFor[T]().Kind() == kind
 }

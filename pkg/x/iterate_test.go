@@ -93,6 +93,16 @@ func TestContains(t *testing.T) {
 
 		assert.False(t, result)
 	})
+
+	t.Run("finds an item equal to the zero value", func(t *testing.T) {
+		items := []int{0, 1, 2}
+
+		result := Contains(items, func(item int) bool {
+			return item == 0
+		})
+
+		assert.True(t, result)
+	})
 }
 
 func TestMap(t *testing.T) {
@@ -118,12 +128,24 @@ func TestEach(t *testing.T) {
 }
 
 func TestInject(t *testing.T) {
+	t.Run("folds into a value", func(t *testing.T) {
+		items := []int{1, 3, 6}
+
+		result := Inject(items, 0, func(memo int, item int) int {
+			return memo + item
+		})
+
+		assert.Equal(t, 10, result)
+	})
+}
+
+func TestEachWithObject(t *testing.T) {
 	t.Run("collects each item", func(t *testing.T) {
 		items := []int{1, 3, 6}
 
-		result := Inject[int, map[int]bool](items,
+		result := EachWithObject[int, map[int]bool](items,
 			map[int]bool{},
-			func(memo map[int]bool, item int) {
+			func(item int, memo map[int]bool) {
 				memo[item] = true
 			})
 
@@ -152,6 +174,14 @@ func TestPrepend(t *testing.T) {
 		require.NotZero(t, result)
 		assert.Equal(t, []int{7, 9, 1, 3, 6}, result)
 	})
+
+	t.Run("does not modify the original slice", func(t *testing.T) {
+		items := []int{1, 3, 6}
+
+		Prepend[int](items, 7)
+
+		assert.Equal(t, []int{1, 3, 6}, items)
+	})
 }
 
 func TestReverse(t *testing.T) {
@@ -159,5 +189,53 @@ func TestReverse(t *testing.T) {
 		items := []int{1, 2, 3, 4, 5}
 
 		assert.Equal(t, []int{5, 4, 3, 2, 1}, Reverse[int](items))
+	})
+
+	t.Run("does not modify the original slice", func(t *testing.T) {
+		items := []int{1, 2, 3}
+
+		Reverse[int](items)
+
+		assert.Equal(t, []int{1, 2, 3}, items)
+	})
+}
+
+func TestReject(t *testing.T) {
+	t.Run("returns the items that do not match", func(t *testing.T) {
+		items := []int{1, 2, 3, 4, 5}
+
+		results := Reject(items, func(item int) bool {
+			return item%2 == 0
+		})
+
+		assert.Equal(t, []int{1, 3, 5}, results)
+	})
+}
+
+func TestAll(t *testing.T) {
+	t.Run("returns true when every item matches", func(t *testing.T) {
+		assert.True(t, All([]int{2, 4, 6}, func(item int) bool { return item%2 == 0 }))
+	})
+
+	t.Run("returns false when an item does not match", func(t *testing.T) {
+		assert.False(t, All([]int{2, 3, 6}, func(item int) bool { return item%2 == 0 }))
+	})
+
+	t.Run("returns true for an empty slice", func(t *testing.T) {
+		assert.True(t, All([]int{}, func(item int) bool { return false }))
+	})
+}
+
+func TestNone(t *testing.T) {
+	t.Run("returns true when no item matches", func(t *testing.T) {
+		assert.True(t, None([]int{1, 3, 5}, func(item int) bool { return item%2 == 0 }))
+	})
+
+	t.Run("returns false when an item matches", func(t *testing.T) {
+		assert.False(t, None([]int{1, 2, 5}, func(item int) bool { return item%2 == 0 }))
+	})
+
+	t.Run("returns true for an empty slice", func(t *testing.T) {
+		assert.True(t, None([]int{}, func(item int) bool { return true }))
 	})
 }

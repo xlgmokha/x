@@ -9,6 +9,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMiddlewareIsIdempotent(t *testing.T) {
+	tag := func(s string) Option[string] {
+		return func(in string) string { return in + s }
+	}
+
+	t.Run("does not mutate the caller's slice", func(t *testing.T) {
+		middlewares := []Option[string]{tag("a"), tag("b"), tag("c")}
+
+		first := Middleware("|", middlewares...)
+		second := Middleware("|", middlewares...)
+
+		assert.Equal(t, first, second)
+	})
+}
+
 func TestMiddleware(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/example", func(w http.ResponseWriter, r *http.Request) {

@@ -150,4 +150,18 @@ func TestTypes(t *testing.T) {
 			assert.True(t, IsPresent[*http.Client](&http.Client{}))
 		})
 	})
+
+	t.Run("interface type parameters", func(t *testing.T) {
+		t.Run("Default returns nil instead of panicking", func(t *testing.T) {
+			assert.Nil(t, Default[error]())
+		})
+
+		t.Run("IsPtr returns false", func(t *testing.T) {
+			assert.False(t, IsPtr[error](nil))
+		})
+
+		t.Run("IsSlice returns false", func(t *testing.T) {
+			assert.False(t, IsSlice[error](nil))
+		})
+	})
 }

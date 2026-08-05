@@ -7,5 +7,5 @@ import (
 )
 
 func New(name string, options ...x.Option[*http.Cookie]) *http.Cookie {
-	return x.New[*http.Cookie](x.Prepend[x.Option[*http.Cookie]](options, WithName(name))...)
+	return x.New(x.Prepend(options, WithName(name))...)
 }
