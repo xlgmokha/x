@@ -1,4 +1,4 @@
-package log
+package xlog
 
 type Fields map[string]interface{}
 

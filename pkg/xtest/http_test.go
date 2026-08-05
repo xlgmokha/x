@@ -1,4 +1,4 @@
-package test
+package xtest
 
 import (
 	"fmt"
@@ -9,9 +9,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/xlgmokha/x/pkg/context"
 	"github.com/xlgmokha/x/pkg/serde"
 	"github.com/xlgmokha/x/pkg/x"
+	"github.com/xlgmokha/x/pkg/xcontext"
 )
 
 var exampleHeader x.Option[*http.Request] = x.Option[*http.Request](func(r *http.Request) *http.Request {
@@ -155,7 +155,7 @@ func TestWithRequestBody(t *testing.T) {
 
 func TestWithContext(t *testing.T) {
 	t.Run("returns a request with a new context", func(t *testing.T) {
-		key := context.Key[string]("x")
+		key := xcontext.Key[string]("x")
 
 		ctx := key.With(t.Context(), "example")
 		r := Request("GET", "/example", WithContext(ctx))
@@ -167,7 +167,7 @@ func TestWithContext(t *testing.T) {
 
 func TestWithContextKeyValue(t *testing.T) {
 	t.Run("returns a request with a new context", func(t *testing.T) {
-		key := context.Key[string]("x")
+		key := xcontext.Key[string]("x")
 
 		r := Request("GET", "/example", WithContextKeyValue(t.Context(), key, "example"))
 
