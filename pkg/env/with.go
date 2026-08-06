@@ -15,7 +15,7 @@ func With(env Vars, callback func()) {
 	}
 
 	defer func() {
-		for key, _ := range env {
+		for key := range env {
 			os.Unsetenv(key)
 		}
 		for key, value := range original {

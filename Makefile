@@ -30,10 +30,10 @@ clean:
 	@rm -rf bin
 
 fmt:
-	@gofmt -l -w .
+	@gofmt -s -l -w .
 
 fmt-check:
-	@unformatted=$$(gofmt -l .); \
+	@unformatted=$$(gofmt -s -l .); \
 	if [ -n "$$unformatted" ]; then \
 		echo "gofmt needed:"; \
 		echo "$$unformatted"; \
