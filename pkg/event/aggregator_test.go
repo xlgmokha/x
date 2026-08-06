@@ -2,6 +2,7 @@ package event
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/xlgmokha/x/pkg/x"
@@ -49,5 +50,27 @@ func TestAggregator(t *testing.T) {
 			assert.True(t, called[0])
 			assert.True(t, called[1])
 		})
+	})
+}
+
+func TestPublishDoesNotDeadlock(t *testing.T) {
+	t.Run("when a subscriber subscribes during publish", func(t *testing.T) {
+		aggregator := x.New(WithDefaults())
+
+		aggregator.Subscribe("announcement", func(message any) {
+			aggregator.Subscribe("other", func(any) {})
+		})
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			aggregator.Publish("announcement", "Hello")
+		}()
+
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("Publish deadlocked when a subscriber subscribed")
+		}
 	})
 }

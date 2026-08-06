@@ -1,6 +1,7 @@
 package event
 
 import (
+	"slices"
 	"sync"
 
 	"github.com/xlgmokha/x/pkg/x"
@@ -26,10 +27,14 @@ func (a *Aggregator) Subscribe(event Event, f Subscription) {
 }
 
 func (a *Aggregator) Publish(event Event, message any) {
+	for _, subscription := range a.subscriptionsTo(event) {
+		subscription(message)
+	}
+}
+
+func (a *Aggregator) subscriptionsTo(event Event) []Subscription {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
-	for _, subscription := range a.subscriptions[event] {
-		subscription(message)
-	}
+	return slices.Clone(a.subscriptions[event])
 }
