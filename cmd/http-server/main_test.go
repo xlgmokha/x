@@ -8,8 +8,21 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xlgmokha/x/pkg/env"
 	"github.com/xlgmokha/x/pkg/xtest"
 )
+
+func TestListenAddress(t *testing.T) {
+	t.Run("uses the defaults", func(t *testing.T) {
+		assert.Equal(t, "localhost:8080", listenAddress())
+	})
+
+	t.Run("brackets an ipv6 literal", func(t *testing.T) {
+		env.With(env.Vars{"HOST": "::1"}, func() {
+			assert.Equal(t, "[::1]:8080", listenAddress())
+		})
+	})
+}
 
 func TestBuildHttpHandlerFor(t *testing.T) {
 	t.Run("can be built more than once", func(t *testing.T) {

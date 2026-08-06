@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 
@@ -27,7 +27,7 @@ func directory() string {
 }
 
 func listenAddress() string {
-	return fmt.Sprintf("%s:%s", host(), port())
+	return net.JoinHostPort(host(), port())
 }
 
 func buildHttpHandlerFor(root string) http.Handler {
