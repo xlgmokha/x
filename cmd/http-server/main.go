@@ -35,12 +35,13 @@ func listenAddress() string {
 }
 
 func buildHttpHandlerFor(root string) http.Handler {
-	http.Handle("/", http.FileServer(http.Dir(root)))
+	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.Dir(root)))
 
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("%s %s\n", r.Method, r.URL)
-			http.DefaultServeMux.ServeHTTP(w, r)
+			mux.ServeHTTP(w, r)
 		},
 	)
 }
