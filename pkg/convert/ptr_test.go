@@ -28,4 +28,9 @@ func TestFromPtr(t *testing.T) {
 
 		assert.Equal(t, *ptr, value)
 	})
+
+	t.Run("returns the zero value for nil", func(t *testing.T) {
+		assert.Equal(t, "", FromPtr[string](nil))
+		assert.Equal(t, 0, FromPtr[int](nil))
+	})
 }
