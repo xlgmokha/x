@@ -1,10 +1,12 @@
 package ioc
 
 import (
+	"errors"
+	"reflect"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/golobby/container/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,61 +15,227 @@ type testItem struct {
 	num int64
 }
 
-func TestIOC(t *testing.T) {
-	c := container.New()
+type Greeter interface {
+	Greet() string
+}
 
-	t.Run("Register", func(t *testing.T) {
+type englishGreeter struct{}
+
+func (englishGreeter) Greet() string { return "hello" }
+
+type frenchGreeter struct{}
+
+func (frenchGreeter) Greet() string { return "bonjour" }
+
+func TestRegister(t *testing.T) {
+	t.Run("resolves a new instance each time", func(t *testing.T) {
+		c := New()
 		var ctr int64
-		err := Register[*testItem](c, func() *testItem {
-			item := &testItem{num: ctr}
+
+		Register(c, func(*Container) *testItem {
 			ctr++
-			return item
+			return &testItem{num: ctr}
 		})
 
+		first, err := Resolve[*testItem](c)
+		require.NoError(t, err)
+		second, err := Resolve[*testItem](c)
 		require.NoError(t, err)
 
-		assert.Nil(t, c.Call(func(result *testItem) {
-			assert.Equal(t, int64(1), result.num)
-		}))
-
-		assert.Nil(t, c.Call(func(result *testItem) {
-			assert.Equal(t, int64(2), result.num)
-		}))
+		assert.Equal(t, int64(1), first.num)
+		assert.Equal(t, int64(2), second.num)
+		assert.NotSame(t, first, second)
 	})
 
-	t.Run("RegisterSingleton", func(t *testing.T) {
-		err := RegisterSingleton[*testItem](c, func() *testItem {
-			return &testItem{num: time.Now().Unix()}
+	t.Run("binds a concrete type to an interface", func(t *testing.T) {
+		c := New()
+
+		Register(c, func(*Container) Greeter { return englishGreeter{} })
+
+		greeter, err := Resolve[Greeter](c)
+		require.NoError(t, err)
+		assert.Equal(t, "hello", greeter.Greet())
+	})
+
+	t.Run("rebinding an interface replaces the implementation", func(t *testing.T) {
+		c := New()
+
+		Register(c, func(*Container) Greeter { return englishGreeter{} })
+		Register(c, func(*Container) Greeter { return frenchGreeter{} })
+
+		greeter, err := Resolve[Greeter](c)
+		require.NoError(t, err)
+		assert.Equal(t, "bonjour", greeter.Greet())
+	})
+
+	t.Run("keeps interface and concrete bindings distinct", func(t *testing.T) {
+		c := New()
+
+		Register(c, func(*Container) Greeter { return englishGreeter{} })
+		Register(c, func(*Container) englishGreeter { return englishGreeter{} })
+
+		greeter, err := Resolve[Greeter](c)
+		require.NoError(t, err)
+		assert.Equal(t, "hello", greeter.Greet())
+
+		concrete, err := Resolve[englishGreeter](c)
+		require.NoError(t, err)
+		assert.Equal(t, "hello", concrete.Greet())
+	})
+
+	t.Run("resolves a dependency through the container", func(t *testing.T) {
+		c := New()
+
+		Register(c, func(*Container) Greeter { return frenchGreeter{} })
+		Register(c, func(c *Container) *testItem {
+			greeter := MustResolve[Greeter](c)
+			return &testItem{num: int64(len(greeter.Greet()))}
 		})
+
+		item, err := Resolve[*testItem](c)
+		require.NoError(t, err)
+		assert.Equal(t, int64(len("bonjour")), item.num)
+	})
+}
+
+func TestRegisterSingleton(t *testing.T) {
+	t.Run("resolves the same instance every time", func(t *testing.T) {
+		c := New()
+		var ctr int64
+
+		RegisterSingleton(c, func(*Container) *testItem {
+			ctr++
+			return &testItem{num: ctr}
+		})
+
+		first, err := Resolve[*testItem](c)
+		require.NoError(t, err)
+		second, err := Resolve[*testItem](c)
 		require.NoError(t, err)
 
-		var first int64
-		assert.Nil(t, c.Call(func(result *testItem) {
-			first = result.num
-		}))
-
-		assert.Nil(t, c.Call(func(result *testItem) {
-			assert.Equal(t, first, result.num)
-		}))
+		assert.Same(t, first, second)
+		assert.Equal(t, int64(1), ctr)
 	})
 
-	t.Run("Resolve", func(t *testing.T) {
-		item := &testItem{}
+	t.Run("builds the instance only once under concurrency", func(t *testing.T) {
+		c := New()
+		var mu sync.Mutex
+		calls := 0
 
-		require.NoError(t, Register[*testItem](c, func() *testItem { return item }))
+		RegisterSingleton(c, func(*Container) Greeter {
+			mu.Lock()
+			defer mu.Unlock()
+			calls++
+			return englishGreeter{}
+		})
 
-		result, err := Resolve[*testItem](c)
+		var wg sync.WaitGroup
+		for range 8 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, _ = Resolve[Greeter](c)
+			}()
+		}
+		wg.Wait()
+
+		assert.Equal(t, 1, calls)
+	})
+}
+
+func TestResolveUnregistered(t *testing.T) {
+	t.Run("returns a typed error", func(t *testing.T) {
+		c := New()
+
+		result, err := Resolve[Greeter](c)
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+
+		notRegistered, ok := errors.AsType[*NotRegisteredError](err)
+		require.True(t, ok)
+		assert.Equal(t, reflect.TypeFor[Greeter](), notRegistered.Type)
+		assert.Contains(t, err.Error(), "Greeter")
+	})
+
+	t.Run("MustResolve panics", func(t *testing.T) {
+		c := New()
+
+		assert.Panics(t, func() { MustResolve[Greeter](c) })
+	})
+
+	t.Run("MustResolve returns the instance when registered", func(t *testing.T) {
+		c := New()
+		Register(c, func(*Container) Greeter { return englishGreeter{} })
+
+		assert.Equal(t, "hello", MustResolve[Greeter](c).Greet())
+	})
+}
+
+func TestResolveTypeMismatch(t *testing.T) {
+	t.Run("reports a binding that produces the wrong type", func(t *testing.T) {
+		c := New()
+		c.bind(reflect.TypeFor[Greeter](), &binding{factory: func(*Container) any { return 42 }})
+
+		result, err := Resolve[Greeter](c)
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+
+		mismatch, ok := errors.AsType[*TypeMismatchError](err)
+		require.True(t, ok)
+		assert.Equal(t, reflect.TypeFor[Greeter](), mismatch.Type)
+		assert.Contains(t, err.Error(), "produced int")
+	})
+
+	t.Run("a factory that returns nil is not a mismatch", func(t *testing.T) {
+		c := New()
+		Register(c, func(*Container) Greeter { return nil })
+
+		result, err := Resolve[Greeter](c)
+
 		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+}
 
-		assert.Equal(t, item, result)
+func TestResolveCycle(t *testing.T) {
+	t.Run("a singleton that resolves itself returns an error", func(t *testing.T) {
+		c := New()
+		RegisterSingleton(c, func(c *Container) Greeter {
+			_, err := Resolve[Greeter](c)
+			require.Error(t, err)
+			_, ok := errors.AsType[*CycleError](err)
+			assert.True(t, ok, "want a CycleError, got %v", err)
+			return englishGreeter{}
+		})
+
+		done := make(chan error, 1)
+		go func() { _, err := Resolve[Greeter](c); done <- err }()
+
+		select {
+		case err := <-done:
+			require.NoError(t, err)
+		case <-time.After(2 * time.Second):
+			t.Fatal("Resolve deadlocked on a self-referential singleton")
+		}
 	})
 
-	t.Run("MustResolve", func(t *testing.T) {
-		item := &testItem{}
+	t.Run("a two-step cycle returns an error", func(t *testing.T) {
+		c := New()
+		Register(c, func(c *Container) Greeter {
+			_, _ = Resolve[*testItem](c)
+			return englishGreeter{}
+		})
+		Register(c, func(c *Container) *testItem {
+			_, err := Resolve[Greeter](c)
+			require.Error(t, err)
+			_, ok := errors.AsType[*CycleError](err)
+			assert.True(t, ok, "want a CycleError, got %v", err)
+			return &testItem{}
+		})
 
-		require.NoError(t, Register[*testItem](c, func() *testItem { return item }))
-
-		result := MustResolve[*testItem](c)
-		assert.Equal(t, item, result)
+		_, err := Resolve[Greeter](c)
+		require.NoError(t, err)
 	})
 }

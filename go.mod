@@ -4,7 +4,6 @@ go 1.26
 
 require (
 	github.com/elazarl/goproxy v1.8.5
-	github.com/golobby/container/v3 v3.3.2
 	github.com/google/jsonapi v1.0.0
 	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.11.1
