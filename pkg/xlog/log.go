@@ -2,18 +2,11 @@ package xlog
 
 import (
 	"io"
-
-	"github.com/rs/zerolog"
-	"github.com/xlgmokha/x/pkg/convert"
+	"log/slog"
 )
 
-func New(writer io.Writer, fields Fields) *zerolog.Logger {
-	return convert.ToPtr(
-		zerolog.
-			New(writer).
-			With().
-			Timestamp().
-			Fields(fields.ToMap()).
-			Logger(),
-	)
+var options = &slog.HandlerOptions{Level: slog.LevelDebug}
+
+func New(writer io.Writer, fields Fields) *slog.Logger {
+	return slog.New(slog.NewJSONHandler(writer, options).WithAttrs(fields.ToAttrs()))
 }
