@@ -6,8 +6,8 @@ import (
 )
 
 func Fetch(key string, defaultValue string) string {
-	if x := os.Getenv(key); x != "" {
-		return x
+	if value, ok := os.LookupEnv(key); ok {
+		return value
 	}
 	return defaultValue
 }
@@ -15,8 +15,9 @@ func Fetch(key string, defaultValue string) string {
 func Variables() Vars {
 	items := Vars{}
 	for _, line := range os.Environ() {
-		segments := strings.SplitN(line, "=", 2)
-		items[segments[0]] = segments[1]
+		if key, value, ok := strings.Cut(line, "="); ok {
+			items[key] = value
+		}
 	}
 	return items
 }

@@ -14,10 +14,14 @@ func TestEnv(t *testing.T) {
 			})
 		})
 
-		t.Run("returns the default value", func(t *testing.T) {
+		t.Run("returns an explicitly empty value", func(t *testing.T) {
 			With(Vars{"X_VAR": ""}, func() {
-				assert.Equal(t, "default", Fetch("X_VAR", "default"))
+				assert.Equal(t, "", Fetch("X_VAR", "default"))
 			})
+		})
+
+		t.Run("returns the default value when unset", func(t *testing.T) {
+			assert.Equal(t, "default", Fetch("X_DEFINITELY_UNSET_VAR", "default"))
 		})
 	})
 
@@ -26,5 +30,11 @@ func TestEnv(t *testing.T) {
 			assert.NotEmpty(t, key)
 			assert.NotNil(t, value)
 		}
+
+		t.Run("does not panic on an entry without an equals sign", func(t *testing.T) {
+			assert.NotPanics(t, func() {
+				_ = Variables()
+			})
+		})
 	})
 }
