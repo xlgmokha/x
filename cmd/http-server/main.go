@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
 	"github.com/xlgmokha/x/pkg/env"
+	"github.com/xlgmokha/x/pkg/x"
+	"github.com/xlgmokha/x/pkg/xlog"
 )
 
 func host() string {
@@ -32,23 +34,22 @@ func buildHttpHandlerFor(root string) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.Dir(root)))
 
-	return http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			fmt.Printf("%s %s\n", r.Method, r.URL)
-			mux.ServeHTTP(w, r)
-		},
-	)
+	return mux
 }
 
 func startServer(address string, directory string) {
-	fmt.Printf("Listening and serving HTTP on http://%s\n", address)
-
-	log.Fatal(
-		http.ListenAndServe(
-			address,
-			buildHttpHandlerFor(directory),
-		),
+	logger := xlog.New(os.Stdout, xlog.Fields{})
+	handler := x.Middleware[http.Handler](
+		buildHttpHandlerFor(directory),
+		xlog.HTTP(logger),
 	)
+
+	logger.Info("listening", slog.String("address", address), slog.String("directory", directory))
+
+	if err := http.ListenAndServe(address, handler); err != nil {
+		logger.Error("server stopped", slog.Any("error", err))
+		os.Exit(1)
+	}
 }
 
 func main() {

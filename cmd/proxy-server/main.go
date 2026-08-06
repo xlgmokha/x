@@ -9,7 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"flag"
-	"log"
+	"log/slog"
 	"math/big"
 	"net"
 	"net/http"
@@ -19,7 +19,16 @@ import (
 	"time"
 
 	"github.com/elazarl/goproxy"
+	"github.com/xlgmokha/x/pkg/xlog"
 )
+
+func headersFrom(header http.Header) slog.Attr {
+	attrs := make([]any, 0, len(header))
+	for name, values := range header {
+		attrs = append(attrs, slog.Any(name, values))
+	}
+	return slog.Group("headers", attrs...)
+}
 
 type config struct {
 	certificate string
@@ -108,7 +117,7 @@ func (s *CertificateStore) lockFor(hostname string) *sync.Mutex {
 func generateSelfSignedCert(host string) (tls.Certificate, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		log.Fatal(err)
+		return tls.Certificate{}, err
 	}
 
 	template := x509.Certificate{
@@ -129,7 +138,7 @@ func generateSelfSignedCert(host string) (tls.Certificate, error) {
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
-		log.Fatal(err)
+		return tls.Certificate{}, err
 	}
 
 	crtPem := &bytes.Buffer{}
@@ -149,14 +158,18 @@ func certFrom(certificate, key, host string) (tls.Certificate, error) {
 }
 
 func main() {
+	logger := xlog.New(os.Stdout, xlog.Fields{})
+
 	config, err := parseFlags(os.Args[0], os.Args[1:])
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("invalid flags", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	ca, err := certFrom(config.certificate, config.key, config.host)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("could not load a certificate", slog.Any("error", err))
+		os.Exit(1)
 	}
 	goproxy.GoproxyCa = ca
 	goproxy.OkConnect = &goproxy.ConnectAction{Action: goproxy.ConnectAccept, TLSConfig: goproxy.TLSConfigFromCA(&ca)}
@@ -176,32 +189,40 @@ func main() {
 	proxy.CertStore = newCertificateStore()
 	proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 	proxy.OnRequest().DoFunc(func(r *http.Request, p *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-		log.Printf("%s %s\n", r.Method, r.URL)
-		if proxy.Verbose {
-			for k, v := range r.Header {
-				log.Printf("%s: %v\n", k, v)
-			}
+		attrs := []slog.Attr{
+			slog.String("method", r.Method),
+			slog.String("url", r.URL.String()),
 		}
+		if proxy.Verbose {
+			attrs = append(attrs, headersFrom(r.Header))
+		}
+		logger.LogAttrs(r.Context(), slog.LevelInfo, "request", attrs...)
 
 		return r, nil
 	})
 	proxy.OnResponse().DoFunc(func(r *http.Response, p *goproxy.ProxyCtx) *http.Response {
 		if r == nil {
-			log.Printf("No response from server\n")
+			logger.Warn("no response from server")
 			return r
 		}
 
-		log.Printf("%d %s\n", r.StatusCode, r.Request.URL)
-		if proxy.Verbose {
-			for k, v := range r.Header {
-				log.Printf("%s: %v\n", k, v)
-			}
+		attrs := []slog.Attr{
+			slog.Int("status", r.StatusCode),
+			slog.String("url", r.Request.URL.String()),
 		}
+		if proxy.Verbose {
+			attrs = append(attrs, headersFrom(r.Header))
+		}
+		logger.LogAttrs(r.Request.Context(), slog.LevelInfo, "response", attrs...)
 
 		return r
 	})
 
 	address := config.listenAddress()
-	log.Printf("Listening and serving HTTP on http://%s\n", address)
-	log.Fatal(http.ListenAndServe(address, proxy))
+	logger.Info("listening", slog.String("address", address))
+
+	if err := http.ListenAndServe(address, proxy); err != nil {
+		logger.Error("server stopped", slog.Any("error", err))
+		os.Exit(1)
+	}
 }
