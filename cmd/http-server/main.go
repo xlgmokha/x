@@ -5,22 +5,16 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/xlgmokha/x/pkg/env"
 )
 
 func host() string {
-	host := os.Getenv("HOST")
-	if host == "" {
-		return "localhost"
-	}
-	return host
+	return env.Fetch("HOST", "localhost")
 }
 
 func port() string {
-	host := os.Getenv("PORT")
-	if host == "" {
-		return "8080"
-	}
-	return host
+	return env.Fetch("PORT", "8080")
 }
 
 func directory() string {
