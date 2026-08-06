@@ -9,11 +9,11 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"flag"
-	"fmt"
 	"log"
 	"math/big"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"syscall"
 	"time"
@@ -21,13 +21,32 @@ import (
 	"github.com/elazarl/goproxy"
 )
 
-var (
-	certificate = *flag.String("certificate", "", "Path to x509 Certificate fille")
-	key         = *flag.String("key", "", "Path to the private key file")
-	host        = *flag.String("host", "127.0.0.1", "Interface to bind to")
-	port        = *flag.String("port", "8080", "Port to bind to")
-	verbose     = *flag.Bool("verbose", false, "Enable verbose output")
-)
+type config struct {
+	certificate string
+	key         string
+	host        string
+	port        string
+	verbose     bool
+}
+
+func parseFlags(name string, args []string) (*config, error) {
+	config := &config{}
+	flags := flag.NewFlagSet(name, flag.ContinueOnError)
+	flags.StringVar(&config.certificate, "certificate", "", "Path to x509 certificate file")
+	flags.StringVar(&config.key, "key", "", "Path to the private key file")
+	flags.StringVar(&config.host, "host", "127.0.0.1", "Interface to bind to")
+	flags.StringVar(&config.port, "port", "8080", "Port to bind to")
+	flags.BoolVar(&config.verbose, "verbose", false, "Enable verbose output")
+
+	if err := flags.Parse(args); err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+func (c *config) listenAddress() string {
+	return net.JoinHostPort(c.host, c.port)
+}
 
 type CertificateStore struct {
 	certs map[string]*tls.Certificate
@@ -64,11 +83,7 @@ func (s *CertificateStore) LockFor(host string) *sync.Mutex {
 	return lock
 }
 
-func listenAddress() string {
-	return fmt.Sprintf("%s:%s", host, port)
-}
-
-func generateSelfSignedCert() (tls.Certificate, error) {
+func generateSelfSignedCert(host string) (tls.Certificate, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		log.Fatal(err)
@@ -104,17 +119,20 @@ func generateSelfSignedCert() (tls.Certificate, error) {
 	return tls.X509KeyPair(crtPem.Bytes(), keyPem.Bytes())
 }
 
-func certFrom(certificate, key string) (tls.Certificate, error) {
+func certFrom(certificate, key, host string) (tls.Certificate, error) {
 	if certificate != "" && key != "" {
 		return tls.LoadX509KeyPair(certificate, key)
 	}
-	return generateSelfSignedCert()
+	return generateSelfSignedCert(host)
 }
 
 func main() {
-	flag.Parse()
+	config, err := parseFlags(os.Args[0], os.Args[1:])
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	ca, err := certFrom(certificate, key)
+	ca, err := certFrom(config.certificate, config.key, config.host)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -125,7 +143,7 @@ func main() {
 	goproxy.RejectConnect = &goproxy.ConnectAction{Action: goproxy.ConnectReject, TLSConfig: goproxy.TLSConfigFromCA(&ca)}
 
 	proxy := goproxy.NewProxyHttpServer()
-	proxy.Verbose = verbose
+	proxy.Verbose = config.verbose
 	dialer := &net.Dialer{Control: func(network, address string, conn syscall.RawConn) error { return nil }}
 	proxy.Tr = &http.Transport{
 		Dial:            dialer.Dial,
@@ -164,7 +182,7 @@ func main() {
 		return r
 	})
 
-	address := listenAddress()
+	address := config.listenAddress()
 	log.Printf("Listening and serving HTTP on http://%s\n", address)
 	log.Fatal(http.ListenAndServe(address, proxy))
 }
