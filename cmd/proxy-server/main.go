@@ -49,36 +49,58 @@ func (c *config) listenAddress() string {
 }
 
 type CertificateStore struct {
+	mu    sync.Mutex
 	certs map[string]*tls.Certificate
 	locks map[string]*sync.Mutex
-	sync.Mutex
 }
 
-func (s *CertificateStore) Fetch(host string, generate func() (*tls.Certificate, error)) (*tls.Certificate, error) {
-	hostLock := s.LockFor(host)
+func newCertificateStore() *CertificateStore {
+	return &CertificateStore{
+		certs: map[string]*tls.Certificate{},
+		locks: map[string]*sync.Mutex{},
+	}
+}
+
+func (s *CertificateStore) Fetch(hostname string, gen func() (*tls.Certificate, error)) (*tls.Certificate, error) {
+	hostLock := s.lockFor(hostname)
 	hostLock.Lock()
 	defer hostLock.Unlock()
 
-	cert, ok := s.certs[host]
-	var err error
-	if !ok {
-		cert, err = generate()
-		if err != nil {
-			return nil, err
-		}
-		s.certs[host] = cert
+	if cert, ok := s.get(hostname); ok {
+		return cert, nil
 	}
+
+	cert, err := gen()
+	if err != nil {
+		return nil, err
+	}
+	s.put(hostname, cert)
 	return cert, nil
 }
 
-func (s *CertificateStore) LockFor(host string) *sync.Mutex {
-	s.Lock()
-	defer s.Unlock()
+func (s *CertificateStore) get(hostname string) (*tls.Certificate, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	lock, ok := s.locks[host]
+	cert, ok := s.certs[hostname]
+	return cert, ok
+}
+
+func (s *CertificateStore) put(hostname string, cert *tls.Certificate) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.certs[hostname] = cert
+}
+
+func (s *CertificateStore) lockFor(hostname string) *sync.Mutex {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	lock, ok := s.locks[hostname]
 	if !ok {
 		lock = &sync.Mutex{}
-		s.locks[host] = lock
+		s.locks[hostname] = lock
 	}
 	return lock
 }
@@ -151,10 +173,7 @@ func main() {
 		TLSClientConfig: &tls.Config{},
 		Proxy:           http.ProxyFromEnvironment,
 	}
-	proxy.CertStore = &CertificateStore{
-		certs: map[string]*tls.Certificate{},
-		locks: map[string]*sync.Mutex{},
-	}
+	proxy.CertStore = newCertificateStore()
 	proxy.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 	proxy.OnRequest().DoFunc(func(r *http.Request, p *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 		log.Printf("%s %s\n", r.Method, r.URL)

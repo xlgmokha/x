@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/tls"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,5 +42,42 @@ func TestParseFlags(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "[::1]:8080", config.listenAddress())
+	})
+}
+
+func TestCertificateStore(t *testing.T) {
+	generate := func() (*tls.Certificate, error) { return &tls.Certificate{}, nil }
+
+	t.Run("concurrent fetches for different hosts do not race", func(t *testing.T) {
+		store := newCertificateStore()
+
+		var wg sync.WaitGroup
+		for _, host := range []string{"a", "b", "c", "d", "e", "f", "g", "h"} {
+			wg.Add(1)
+			go func(host string) {
+				defer wg.Done()
+				_, _ = store.Fetch(host, generate)
+			}(host)
+		}
+
+		wg.Wait()
+	})
+
+	t.Run("generates once per host", func(t *testing.T) {
+		store := newCertificateStore()
+		calls := 0
+		counting := func() (*tls.Certificate, error) {
+			calls++
+			return &tls.Certificate{}, nil
+		}
+
+		first, err := store.Fetch("example.com", counting)
+		require.NoError(t, err)
+
+		second, err := store.Fetch("example.com", counting)
+		require.NoError(t, err)
+
+		assert.Same(t, first, second)
+		assert.Equal(t, 1, calls)
 	})
 }
