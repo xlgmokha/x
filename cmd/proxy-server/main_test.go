@@ -2,6 +2,9 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
+	"flag"
+	"io"
 	"sync"
 	"testing"
 
@@ -11,7 +14,7 @@ import (
 
 func TestParseFlags(t *testing.T) {
 	t.Run("applies the supplied values", func(t *testing.T) {
-		config, err := parseFlags("proxy-server", []string{"-host", "0.0.0.0", "-port", "9999", "-verbose"})
+		config, err := parseFlags("proxy-server", []string{"-host", "0.0.0.0", "-port", "9999", "-verbose"}, io.Discard)
 
 		require.NoError(t, err)
 		assert.Equal(t, "0.0.0.0", config.host)
@@ -20,7 +23,7 @@ func TestParseFlags(t *testing.T) {
 	})
 
 	t.Run("falls back to the defaults", func(t *testing.T) {
-		config, err := parseFlags("proxy-server", []string{})
+		config, err := parseFlags("proxy-server", []string{}, io.Discard)
 
 		require.NoError(t, err)
 		assert.Equal(t, "127.0.0.1", config.host)
@@ -31,17 +34,26 @@ func TestParseFlags(t *testing.T) {
 	})
 
 	t.Run("builds the listen address", func(t *testing.T) {
-		config, err := parseFlags("proxy-server", []string{"-host", "0.0.0.0", "-port", "9999"})
+		config, err := parseFlags("proxy-server", []string{"-host", "0.0.0.0", "-port", "9999"}, io.Discard)
 
 		require.NoError(t, err)
 		assert.Equal(t, "0.0.0.0:9999", config.listenAddress())
 	})
 
 	t.Run("brackets an ipv6 literal", func(t *testing.T) {
-		config, err := parseFlags("proxy-server", []string{"-host", "::1"})
+		config, err := parseFlags("proxy-server", []string{"-host", "::1"}, io.Discard)
 
 		require.NoError(t, err)
 		assert.Equal(t, "[::1]:8080", config.listenAddress())
+	})
+
+	t.Run("reports a help request separately from a bad flag", func(t *testing.T) {
+		_, err := parseFlags("proxy-server", []string{"-h"}, io.Discard)
+		assert.True(t, errors.Is(err, flag.ErrHelp), "want flag.ErrHelp, got %v", err)
+
+		_, err = parseFlags("proxy-server", []string{"-nope"}, io.Discard)
+		require.Error(t, err)
+		assert.False(t, errors.Is(err, flag.ErrHelp))
 	})
 }
 

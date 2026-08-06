@@ -8,7 +8,9 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"flag"
+	"io"
 	"log/slog"
 	"math/big"
 	"net"
@@ -38,9 +40,10 @@ type config struct {
 	verbose     bool
 }
 
-func parseFlags(name string, args []string) (*config, error) {
+func parseFlags(name string, args []string, output io.Writer) (*config, error) {
 	config := &config{}
 	flags := flag.NewFlagSet(name, flag.ContinueOnError)
+	flags.SetOutput(output)
 	flags.StringVar(&config.certificate, "certificate", "", "Path to x509 certificate file")
 	flags.StringVar(&config.key, "key", "", "Path to the private key file")
 	flags.StringVar(&config.host, "host", "127.0.0.1", "Interface to bind to")
@@ -158,13 +161,15 @@ func certFrom(certificate, key, host string) (tls.Certificate, error) {
 }
 
 func main() {
-	logger := xlog.New(os.Stdout, xlog.Fields{})
-
-	config, err := parseFlags(os.Args[0], os.Args[1:])
+	config, err := parseFlags(os.Args[0], os.Args[1:], os.Stderr)
 	if err != nil {
-		logger.Error("invalid flags", slog.Any("error", err))
-		os.Exit(1)
+		if errors.Is(err, flag.ErrHelp) {
+			return
+		}
+		os.Exit(1) // flag has already reported the reason and printed the usage
 	}
+
+	logger := xlog.New(os.Stdout, xlog.Fields{})
 
 	ca, err := certFrom(config.certificate, config.key, config.host)
 	if err != nil {
