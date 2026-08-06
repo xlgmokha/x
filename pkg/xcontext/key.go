@@ -13,8 +13,8 @@ func (self Key[T]) With(ctx context.Context, value T) context.Context {
 }
 
 func (self Key[T]) From(ctx context.Context) T {
-	if value := ctx.Value(self); value != nil {
-		return value.(T)
+	if value, ok := ctx.Value(self).(T); ok {
+		return value
 	}
 	return x.Zero[T]()
 }

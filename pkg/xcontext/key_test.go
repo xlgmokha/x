@@ -35,5 +35,12 @@ func TestWith(t *testing.T) {
 
 			assert.Equal(t, 0, key.From(context.Background()))
 		})
+
+		t.Run("returns the zero value when the type does not match", func(t *testing.T) {
+			key := Key[string]("mismatch")
+			ctx := context.WithValue(context.Background(), key, 42)
+
+			assert.Equal(t, "", key.From(ctx))
+		})
 	})
 }
