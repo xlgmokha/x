@@ -1,6 +1,6 @@
 module github.com/xlgmokha/x
 
-go 1.26
+go 1.27
 
 require (
 	github.com/elazarl/goproxy v1.8.5

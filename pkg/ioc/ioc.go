@@ -33,7 +33,7 @@ func New() *Container {
 	return &Container{registry: &registry{bindings: map[reflect.Type]*binding{}}}
 }
 
-func Register[T any](c *Container, factory Resolver[T]) {
+func (c *Container) Register[T any](factory Resolver[T]) {
 	c.bind(reflect.TypeFor[T](), &binding{factory: erase(factory)})
 }
 
@@ -42,11 +42,11 @@ func Register[T any](c *Container, factory Resolver[T]) {
 // A cycle is reported as a *CycleError when it occurs within a single
 // resolution chain. Two singletons that depend on each other and are resolved
 // from different goroutines will block on each other's construction instead.
-func RegisterSingleton[T any](c *Container, factory Resolver[T]) {
+func (c *Container) RegisterSingleton[T any](factory Resolver[T]) {
 	c.bind(reflect.TypeFor[T](), &binding{factory: erase(factory), singleton: true})
 }
 
-func Resolve[T any](c *Container) (T, error) {
+func (c *Container) Resolve[T any]() (T, error) {
 	item := reflect.TypeFor[T]()
 
 	instance, err := c.resolve(item)
@@ -64,8 +64,8 @@ func Resolve[T any](c *Container) (T, error) {
 	return value, nil
 }
 
-func MustResolve[T any](c *Container) T {
-	return x.Must(Resolve[T](c))
+func (c *Container) MustResolve[T any]() T {
+	return x.Must(c.Resolve[T]())
 }
 
 func erase[T any](factory Resolver[T]) func(*Container) any {

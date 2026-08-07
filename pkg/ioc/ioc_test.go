@@ -32,14 +32,14 @@ func TestRegister(t *testing.T) {
 		c := New()
 		var ctr int64
 
-		Register(c, func(*Container) *testItem {
+		c.Register(func(*Container) *testItem {
 			ctr++
 			return &testItem{num: ctr}
 		})
 
-		first, err := Resolve[*testItem](c)
+		first, err := c.Resolve[*testItem]()
 		require.NoError(t, err)
-		second, err := Resolve[*testItem](c)
+		second, err := c.Resolve[*testItem]()
 		require.NoError(t, err)
 
 		assert.Equal(t, int64(1), first.num)
@@ -50,9 +50,9 @@ func TestRegister(t *testing.T) {
 	t.Run("binds a concrete type to an interface", func(t *testing.T) {
 		c := New()
 
-		Register(c, func(*Container) Greeter { return englishGreeter{} })
+		c.Register(func(*Container) Greeter { return englishGreeter{} })
 
-		greeter, err := Resolve[Greeter](c)
+		greeter, err := c.Resolve[Greeter]()
 		require.NoError(t, err)
 		assert.Equal(t, "hello", greeter.Greet())
 	})
@@ -60,10 +60,10 @@ func TestRegister(t *testing.T) {
 	t.Run("rebinding an interface replaces the implementation", func(t *testing.T) {
 		c := New()
 
-		Register(c, func(*Container) Greeter { return englishGreeter{} })
-		Register(c, func(*Container) Greeter { return frenchGreeter{} })
+		c.Register(func(*Container) Greeter { return englishGreeter{} })
+		c.Register(func(*Container) Greeter { return frenchGreeter{} })
 
-		greeter, err := Resolve[Greeter](c)
+		greeter, err := c.Resolve[Greeter]()
 		require.NoError(t, err)
 		assert.Equal(t, "bonjour", greeter.Greet())
 	})
@@ -71,14 +71,14 @@ func TestRegister(t *testing.T) {
 	t.Run("keeps interface and concrete bindings distinct", func(t *testing.T) {
 		c := New()
 
-		Register(c, func(*Container) Greeter { return englishGreeter{} })
-		Register(c, func(*Container) englishGreeter { return englishGreeter{} })
+		c.Register(func(*Container) Greeter { return englishGreeter{} })
+		c.Register(func(*Container) englishGreeter { return englishGreeter{} })
 
-		greeter, err := Resolve[Greeter](c)
+		greeter, err := c.Resolve[Greeter]()
 		require.NoError(t, err)
 		assert.Equal(t, "hello", greeter.Greet())
 
-		concrete, err := Resolve[englishGreeter](c)
+		concrete, err := c.Resolve[englishGreeter]()
 		require.NoError(t, err)
 		assert.Equal(t, "hello", concrete.Greet())
 	})
@@ -86,13 +86,13 @@ func TestRegister(t *testing.T) {
 	t.Run("resolves a dependency through the container", func(t *testing.T) {
 		c := New()
 
-		Register(c, func(*Container) Greeter { return frenchGreeter{} })
-		Register(c, func(c *Container) *testItem {
-			greeter := MustResolve[Greeter](c)
+		c.Register(func(*Container) Greeter { return frenchGreeter{} })
+		c.Register(func(c *Container) *testItem {
+			greeter := c.MustResolve[Greeter]()
 			return &testItem{num: int64(len(greeter.Greet()))}
 		})
 
-		item, err := Resolve[*testItem](c)
+		item, err := c.Resolve[*testItem]()
 		require.NoError(t, err)
 		assert.Equal(t, int64(len("bonjour")), item.num)
 	})
@@ -103,14 +103,14 @@ func TestRegisterSingleton(t *testing.T) {
 		c := New()
 		var ctr int64
 
-		RegisterSingleton(c, func(*Container) *testItem {
+		c.RegisterSingleton(func(*Container) *testItem {
 			ctr++
 			return &testItem{num: ctr}
 		})
 
-		first, err := Resolve[*testItem](c)
+		first, err := c.Resolve[*testItem]()
 		require.NoError(t, err)
-		second, err := Resolve[*testItem](c)
+		second, err := c.Resolve[*testItem]()
 		require.NoError(t, err)
 
 		assert.Same(t, first, second)
@@ -122,7 +122,7 @@ func TestRegisterSingleton(t *testing.T) {
 		var mu sync.Mutex
 		calls := 0
 
-		RegisterSingleton(c, func(*Container) Greeter {
+		c.RegisterSingleton(func(*Container) Greeter {
 			mu.Lock()
 			defer mu.Unlock()
 			calls++
@@ -134,7 +134,7 @@ func TestRegisterSingleton(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, _ = Resolve[Greeter](c)
+				_, _ = c.Resolve[Greeter]()
 			}()
 		}
 		wg.Wait()
@@ -147,7 +147,7 @@ func TestResolveUnregistered(t *testing.T) {
 	t.Run("returns a typed error", func(t *testing.T) {
 		c := New()
 
-		result, err := Resolve[Greeter](c)
+		result, err := c.Resolve[Greeter]()
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -161,14 +161,14 @@ func TestResolveUnregistered(t *testing.T) {
 	t.Run("MustResolve panics", func(t *testing.T) {
 		c := New()
 
-		assert.Panics(t, func() { MustResolve[Greeter](c) })
+		assert.Panics(t, func() { c.MustResolve[Greeter]() })
 	})
 
 	t.Run("MustResolve returns the instance when registered", func(t *testing.T) {
 		c := New()
-		Register(c, func(*Container) Greeter { return englishGreeter{} })
+		c.Register(func(*Container) Greeter { return englishGreeter{} })
 
-		assert.Equal(t, "hello", MustResolve[Greeter](c).Greet())
+		assert.Equal(t, "hello", c.MustResolve[Greeter]().Greet())
 	})
 }
 
@@ -177,7 +177,7 @@ func TestResolveTypeMismatch(t *testing.T) {
 		c := New()
 		c.bind(reflect.TypeFor[Greeter](), &binding{factory: func(*Container) any { return 42 }})
 
-		result, err := Resolve[Greeter](c)
+		result, err := c.Resolve[Greeter]()
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -190,9 +190,9 @@ func TestResolveTypeMismatch(t *testing.T) {
 
 	t.Run("a factory that returns nil is not a mismatch", func(t *testing.T) {
 		c := New()
-		Register(c, func(*Container) Greeter { return nil })
+		c.Register(func(*Container) Greeter { return nil })
 
-		result, err := Resolve[Greeter](c)
+		result, err := c.Resolve[Greeter]()
 
 		require.NoError(t, err)
 		assert.Nil(t, result)
@@ -202,8 +202,8 @@ func TestResolveTypeMismatch(t *testing.T) {
 func TestResolveCycle(t *testing.T) {
 	t.Run("a singleton that resolves itself returns an error", func(t *testing.T) {
 		c := New()
-		RegisterSingleton(c, func(c *Container) Greeter {
-			_, err := Resolve[Greeter](c)
+		c.RegisterSingleton(func(c *Container) Greeter {
+			_, err := c.Resolve[Greeter]()
 			require.Error(t, err)
 			_, ok := errors.AsType[*CycleError](err)
 			assert.True(t, ok, "want a CycleError, got %v", err)
@@ -211,7 +211,7 @@ func TestResolveCycle(t *testing.T) {
 		})
 
 		done := make(chan error, 1)
-		go func() { _, err := Resolve[Greeter](c); done <- err }()
+		go func() { _, err := c.Resolve[Greeter](); done <- err }()
 
 		select {
 		case err := <-done:
@@ -223,19 +223,19 @@ func TestResolveCycle(t *testing.T) {
 
 	t.Run("a two-step cycle returns an error", func(t *testing.T) {
 		c := New()
-		Register(c, func(c *Container) Greeter {
-			_, _ = Resolve[*testItem](c)
+		c.Register(func(c *Container) Greeter {
+			_, _ = c.Resolve[*testItem]()
 			return englishGreeter{}
 		})
-		Register(c, func(c *Container) *testItem {
-			_, err := Resolve[Greeter](c)
+		c.Register(func(c *Container) *testItem {
+			_, err := c.Resolve[Greeter]()
 			require.Error(t, err)
 			_, ok := errors.AsType[*CycleError](err)
 			assert.True(t, ok, "want a CycleError, got %v", err)
 			return &testItem{}
 		})
 
-		_, err := Resolve[Greeter](c)
+		_, err := c.Resolve[Greeter]()
 		require.NoError(t, err)
 	})
 }
