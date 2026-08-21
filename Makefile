@@ -1,5 +1,5 @@
 .PHONY: build ci clean fmt fmt-check install test tidy vet \
-        syslogs which minit http-server proxy-server
+        syslogs which minit http-server proxy-server browse
 
 syslogs:
 	@mkdir -p bin
@@ -21,7 +21,11 @@ proxy-server:
 	@mkdir -p bin
 	@go build -o bin/proxy-server ./cmd/proxy-server
 
-build: syslogs which minit http-server proxy-server
+browse:
+	@mkdir -p bin
+	@go build -o bin/browse ./cmd/browse
+
+build: syslogs which minit http-server proxy-server browse
 
 install:
 	@go install ./cmd/...

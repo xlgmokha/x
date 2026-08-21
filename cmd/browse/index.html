@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en-CA">
+  <head>
+    <meta charset="utf-8">
+    <title>{{.Path}}</title>
+    <style>
+      * { box-sizing: border-box }
+      body {
+        margin: 0;
+        display: grid;
+        grid-template-columns: 20% 80%;
+        height: 100vh;
+      }
+      nav, main {
+        overflow: auto;
+        padding: 1rem
+      }
+      nav {
+        border-right: 1px solid #d0d7de;
+        white-space: nowrap
+      }
+      nav ul {
+        list-style: none;
+        margin: 0;
+        padding-left: 1rem;
+      }
+      nav a {
+        display: block;
+        color: #0969da;
+        text-decoration: none;
+        padding: 0 .25rem;
+      }
+      nav a.selected {
+        background: #ddf4ff;
+        font-weight: 600;
+        border-radius: 3px;
+      }
+      summary {
+        cursor: pointer;
+        user-select: none;
+      }
+      pre {
+        background: #f6f8fa;
+        padding: 1rem;
+        overflow: auto;
+        border-radius: 6px;
+      }
+      img { max-width: 100% }
+    </style>
+  </head>
+  <body>
+    <nav>{{range .Tree}}{{template "node" .}}{{end}}</nav>
+    <main>{{if .HTML}}{{.HTML}}{{else}}<pre>{{.Text}}</pre>{{end}}</main>
+    {{define "node"}}
+      {{- if .Dir}}
+        <details {{if .Open}}open{{end}}><summary>{{.Name}}</summary>
+          <ul>{{range .Children}}<li>{{template "node" .}}</li>{{end}}</ul>
+        </details>
+      {{- else}}
+        <a href="{{.Href}}"{{if .Selected}} class="selected"{{end}}>{{.Name}}</a>
+      {{- end}}
+    {{end}}
+  </body>
+</html>

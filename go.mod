@@ -6,6 +6,7 @@ require (
 	github.com/elazarl/goproxy v1.8.5
 	github.com/google/jsonapi v1.0.0
 	github.com/stretchr/testify v1.11.1
+	github.com/yuin/goldmark v1.8.5
 	gopkg.in/yaml.v2 v2.4.0
 )
 
