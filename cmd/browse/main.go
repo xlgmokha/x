@@ -18,7 +18,9 @@ import (
 	"github.com/xlgmokha/x/pkg/x"
 	"github.com/xlgmokha/x/pkg/xlog"
 	"github.com/yuin/goldmark"
+	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
 )
 
 //go:embed index.html
@@ -28,7 +30,15 @@ const csp = "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; scri
 
 var (
 	page     = template.Must(template.New("index").Parse(source))
-	markdown = goldmark.New(goldmark.WithExtensions(extension.GFM))
+	markdown = goldmark.New(
+		goldmark.WithExtensions(
+			extension.GFM,
+			extension.NewFootnote(extension.WithFootnoteBacklinkHTML("^")),
+			extension.DefinitionList,
+			highlighting.NewHighlighting(highlighting.WithStyle("github")),
+		),
+		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
+	)
 )
 
 type node struct {
