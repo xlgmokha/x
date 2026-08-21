@@ -24,6 +24,8 @@ import (
 //go:embed index.html
 var source string
 
+const csp = "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; script-src https://cdn.jsdelivr.net 'unsafe-inline'"
+
 var (
 	page     = template.Must(template.New("index").Parse(source))
 	markdown = goldmark.New(goldmark.WithExtensions(extension.GFM))
@@ -36,10 +38,11 @@ type node struct {
 }
 
 type view struct {
-	Path string
-	Tree []node
-	HTML template.HTML
-	Text string
+	Path    string
+	Tree    []node
+	HTML    template.HTML
+	Text    string
+	Mermaid bool
 }
 
 func tree(fsys fs.FS, dir, selected string) []node {
@@ -84,7 +87,8 @@ func render(name string, data []byte) view {
 	if ext := strings.ToLower(path.Ext(name)); ext == ".md" || ext == ".markdown" {
 		var buffer bytes.Buffer
 		x.Check(markdown.Convert(data, &buffer))
-		return view{HTML: template.HTML(buffer.String())}
+		html := buffer.String()
+		return view{HTML: template.HTML(html), Mermaid: strings.Contains(html, `class="language-mermaid"`)}
 	}
 	return view{Text: string(data)}
 }
@@ -125,7 +129,7 @@ func main() {
 
 		body.Path = name
 		body.Tree = tree(fsys, "", name)
-		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'")
+		w.Header().Set("Content-Security-Policy", csp)
 		x.Check(page.Execute(w, body))
 	})
 

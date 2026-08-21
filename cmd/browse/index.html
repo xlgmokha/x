@@ -60,5 +60,9 @@
         <a href="{{.Href}}"{{if .Selected}} class="selected"{{end}}>{{.Name}}</a>
       {{- end}}
     {{end}}
+    {{if .Mermaid}}<script src="https://cdn.jsdelivr.net/npm/mermaid@11.17.0/dist/mermaid.min.js"
+      integrity="sha384-1XxYRbOYiiyu+pmHSGPcd+f1+ISteo+dnLpgQKUB07vPr9ddelj3zjO+TAbBqFXY"
+      crossorigin="anonymous"
+      onload="mermaid.run({querySelector: 'pre > code.language-mermaid'})"></script>{{end}}
   </body>
 </html>
