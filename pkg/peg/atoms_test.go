@@ -93,15 +93,62 @@ func TestMatch(t *testing.T) {
 func TestSequence(t *testing.T) {
 	t.Run("returns true", func(t *testing.T) {
 		atom := Sequence(
-			Str("username"),
+			Str("userName"),
 			Str("eq"),
 			Match(`"[a-z]+"`),
 		)
-		ctx := &Context{stream: `username eq "bjensen"`}
+		ctx := &Context{stream: `userName eq "bjensen"`}
 		result, ok := atom(ctx)
 
 		assert.Equal(t, true, ok)
 		assert.Equal(t, 21, ctx.pos)
-		assert.Equal(t, []any{"username", "eq", `"bjensen"`}, result)
+		assert.Equal(t, []any{"userName", "eq", `"bjensen"`}, result)
 	})
+}
+
+func TestChoice(t *testing.T) {
+	atom := Sequence(
+		Str("userName"),
+		Choice(
+			Str("eq"),
+			Str("ne"),
+			Str("co"),
+			Str("sw"),
+			Str("ew"),
+			Str("gt"),
+			Str("ge"),
+			Str("lt"),
+			Str("le"),
+		),
+		Match(`"[a-z]+"`),
+	)
+
+	tt := []struct {
+		stream string
+		input  string
+
+		position int
+		ok       bool
+		result   any
+	}{
+		{stream: `userName eq "bjensen"`, position: 21, ok: true, result: []any{"userName", "eq", `"bjensen"`}},
+		{stream: `userName ne "bjensen"`, position: 21, ok: true, result: []any{"userName", "ne", `"bjensen"`}},
+		{stream: `userName co "jen"`, position: 17, ok: true, result: []any{"userName", "co", `"jen"`}},
+		{stream: `userName sw "bjen"`, position: 18, ok: true, result: []any{"userName", "sw", `"bjen"`}},
+		{stream: `userName ew "sen"`, position: 17, ok: true, result: []any{"userName", "ew", `"sen"`}},
+		{stream: `userName gt "zero"`, position: 18, ok: true, result: []any{"userName", "gt", `"zero"`}},
+		{stream: `userName ge "zero"`, position: 18, ok: true, result: []any{"userName", "ge", `"zero"`}},
+		{stream: `userName lt "zero"`, position: 18, ok: true, result: []any{"userName", "lt", `"zero"`}},
+		{stream: `userName le "zero"`, position: 18, ok: true, result: []any{"userName", "le", `"zero"`}},
+	}
+	for _, expected := range tt {
+		t.Run(fmt.Sprintf("%s %d", expected.stream, expected.position), func(t *testing.T) {
+			ctx := &Context{stream: expected.stream}
+			result, ok := atom(ctx)
+
+			assert.Equal(t, expected.ok, ok)
+			assert.Equal(t, expected.position, ctx.pos)
+			assert.Equal(t, expected.result, result)
+		})
+	}
 }

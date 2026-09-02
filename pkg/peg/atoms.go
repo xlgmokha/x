@@ -68,3 +68,16 @@ func Sequence(parslets ...Parser) Parser {
 		return results, true
 	}
 }
+
+func Choice(parslets ...Parser) Parser {
+	return func(c *Context) (any, bool) {
+		start := c.pos
+		for _, p := range parslets {
+			if val, ok := p(c); ok {
+				return val, true
+			}
+			c.pos = start
+		}
+		return nil, false
+	}
+}
