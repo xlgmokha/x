@@ -1,20 +1,21 @@
 package peg
 
 import (
+	"regexp"
 	"strings"
 	"unicode"
 )
 
 type Context struct {
-	src string
-	pos int
+	stream string
+	pos    int
 }
 
 type Parser func(c *Context) (any, bool)
 
 func Space() Parser {
 	return func(c *Context) (any, bool) {
-		for c.pos < len(c.src) && unicode.IsSpace(rune(c.src[c.pos])) {
+		for c.pos < len(c.stream) && unicode.IsSpace(rune(c.stream[c.pos])) {
 			c.pos++
 		}
 		return nil, true
@@ -25,9 +26,25 @@ func Str(s string) Parser {
 	return func(c *Context) (any, bool) {
 		start := c.pos
 		Space()(c)
-		if c.pos+len(s) <= len(c.src) && strings.EqualFold(c.src[c.pos:c.pos+len(s)], s) {
+		if c.pos+len(s) <= len(c.stream) && strings.EqualFold(c.stream[c.pos:c.pos+len(s)], s) {
 			c.pos += len(s)
 			return s, true
+		}
+		c.pos = start
+		return nil, false
+	}
+}
+
+func Match(pattern string) Parser {
+	re := regexp.MustCompile("^" + pattern)
+	return func(c *Context) (any, bool) {
+		start := c.pos
+		Space()(c)
+		loc := re.FindStringIndex(c.stream[c.pos:])
+		if loc != nil {
+			res := c.stream[c.pos : c.pos+loc[1]]
+			c.pos += loc[1]
+			return res, true
 		}
 		c.pos = start
 		return nil, false
