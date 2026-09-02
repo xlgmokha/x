@@ -90,6 +90,29 @@ func TestMatch(t *testing.T) {
 	}
 }
 
+func TestMatchNoMatch(t *testing.T) {
+	tt := []struct {
+		stream string
+		re     string
+	}{
+		{stream: "123", re: "[a-z]"},
+		{stream: "123", re: "xyz"},
+		{stream: "", re: "[a-z]+"},
+		{stream: "abc", re: "^[d-z]+$"},
+	}
+	for _, expected := range tt {
+		t.Run(fmt.Sprintf("%s %s", expected.stream, expected.re), func(t *testing.T) {
+			atom := Match(expected.re)
+			ctx := &Context{stream: expected.stream}
+			result, ok := atom(ctx)
+
+			assert.False(t, ok)
+			assert.Nil(t, result)
+			assert.Equal(t, 0, ctx.pos)
+		})
+	}
+}
+
 func TestSequence(t *testing.T) {
 	t.Run("returns true", func(t *testing.T) {
 		atom := Sequence(
@@ -106,6 +129,60 @@ func TestSequence(t *testing.T) {
 		assert.Equal(t, 21, ctx.pos)
 		assert.Equal(t, []ASTNode{"userName", "eq", `"bjensen"`}, result)
 	})
+
+	t.Run("returns false when a parser fails, resetting position", func(t *testing.T) {
+		atom := Sequence(
+			Str("userName"),
+			Space(),
+			Str("ne"),
+		)
+		ctx := &Context{stream: `userName eq "bjensen"`}
+		result, ok := atom(ctx)
+
+		assert.Equal(t, false, ok)
+		assert.Nil(t, result)
+		assert.Equal(t, 0, ctx.pos)
+	})
+
+	t.Run("collects non-nil results while skipping nil ones", func(t *testing.T) {
+		atom := Sequence(
+			Str("a"),
+			Space(),
+			Str("b"),
+		)
+		ctx := &Context{stream: "a b"}
+		result, ok := atom(ctx)
+
+		assert.Equal(t, true, ok)
+		assert.Equal(t, 3, ctx.pos)
+		assert.Equal(t, []ASTNode{"a", "b"}, result)
+	})
+}
+
+func TestChoiceNoMatch(t *testing.T) {
+	atom := Choice(
+		Str("eq"),
+		Str("ne"),
+		Str("co"),
+	)
+
+	tt := []struct {
+		stream string
+	}{
+		{stream: "xx"},
+		{stream: ""},
+		{stream: "abc"},
+	}
+	for _, expected := range tt {
+		t.Run(fmt.Sprintf("%s", expected.stream), func(t *testing.T) {
+			ctx := &Context{stream: expected.stream}
+			result, ok := atom(ctx)
+
+			assert.Equal(t, false, ok)
+			assert.Nil(t, result)
+			assert.Equal(t, 0, ctx.pos)
+		})
+	}
 }
 
 func TestChoice(t *testing.T) {
@@ -172,5 +249,15 @@ func TestTag(t *testing.T) {
 		assert.Equal(t, true, ok)
 		assert.Equal(t, 21, ctx.pos)
 		assert.Equal(t, Token{"filter": []ASTNode{"userName", "eq", `"bjensen"`}}, result)
+	})
+
+	t.Run("returns false when inner parser fails", func(t *testing.T) {
+		atom := Tag("filter", Str("doesnotexist"))
+		ctx := &Context{stream: `userName eq "bjensen"`}
+		result, ok := atom(ctx)
+
+		assert.Equal(t, false, ok)
+		assert.Nil(t, result)
+		assert.Equal(t, 0, ctx.pos)
 	})
 }
