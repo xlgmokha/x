@@ -44,10 +44,10 @@ func TestStr(t *testing.T) {
 		ok       bool
 		result   any
 	}{
-		{stream: "   abcd ", input: "abcd", position: 7, ok: true, result: "abcd"},
-		{stream: "   abcd ", input: "ab", position: 5, ok: true, result: "ab"},
+		{stream: "abcd ", input: "abcd", position: 4, ok: true, result: "abcd"},
+		{stream: "   abcd ", input: "ab", position: 0, ok: false, result: nil},
 		{stream: " cd ", input: "ab", position: 0, ok: false, result: nil},
-		{stream: " ABCD ", input: "abcd", position: 5, ok: true, result: "abcd"},
+		{stream: "ABCD ", input: "abcd", position: 4, ok: true, result: "abcd"},
 	}
 	for _, expected := range tt {
 		t.Run(fmt.Sprintf("%s %d", expected.stream, expected.position), func(t *testing.T) {
@@ -71,11 +71,11 @@ func TestMatch(t *testing.T) {
 		ok       bool
 		result   any
 	}{
-		{stream: "   abcd ", re: "", position: 3, ok: true, result: ""},
-		{stream: "   abcd ", re: "[a-z]", position: 4, ok: true, result: "a"},
-		{stream: "   abcd ", re: "[a-z]+", position: 7, ok: true, result: "abcd"},
-		{stream: "   abcd ", re: `\s`, position: 0, ok: false, result: nil},
-		{stream: "  ab", re: `\s*`, position: 2, ok: true, result: ""},
+		{stream: "   abcd ", re: "", position: 0, ok: true, result: ""},
+		{stream: "abcd ", re: "[a-z]", position: 1, ok: true, result: "a"},
+		{stream: "   abcd ", re: "\\s*[a-z]+", position: 7, ok: true, result: "   abcd"},
+		{stream: "   abcd ", re: `\s`, position: 1, ok: true, result: " "},
+		{stream: "  ab", re: `\s*`, position: 2, ok: true, result: "  "},
 	}
 	for _, expected := range tt {
 		t.Run(fmt.Sprintf("%s %d", expected.stream, expected.position), func(t *testing.T) {
@@ -94,7 +94,9 @@ func TestSequence(t *testing.T) {
 	t.Run("returns true", func(t *testing.T) {
 		atom := Sequence(
 			Str("userName"),
+			Space(),
 			Str("eq"),
+			Space(),
 			Match(`"[a-z]+"`),
 		)
 		ctx := &Context{stream: `userName eq "bjensen"`}
@@ -102,13 +104,14 @@ func TestSequence(t *testing.T) {
 
 		assert.Equal(t, true, ok)
 		assert.Equal(t, 21, ctx.pos)
-		assert.Equal(t, []any{"userName", "eq", `"bjensen"`}, result)
+		assert.Equal(t, []ASTNode{"userName", "eq", `"bjensen"`}, result)
 	})
 }
 
 func TestChoice(t *testing.T) {
 	atom := Sequence(
 		Str("userName"),
+		Space(),
 		Choice(
 			Str("eq"),
 			Str("ne"),
@@ -120,6 +123,7 @@ func TestChoice(t *testing.T) {
 			Str("lt"),
 			Str("le"),
 		),
+		Space(),
 		Match(`"[a-z]+"`),
 	)
 
@@ -131,15 +135,15 @@ func TestChoice(t *testing.T) {
 		ok       bool
 		result   any
 	}{
-		{stream: `userName eq "bjensen"`, position: 21, ok: true, result: []any{"userName", "eq", `"bjensen"`}},
-		{stream: `userName ne "bjensen"`, position: 21, ok: true, result: []any{"userName", "ne", `"bjensen"`}},
-		{stream: `userName co "jen"`, position: 17, ok: true, result: []any{"userName", "co", `"jen"`}},
-		{stream: `userName sw "bjen"`, position: 18, ok: true, result: []any{"userName", "sw", `"bjen"`}},
-		{stream: `userName ew "sen"`, position: 17, ok: true, result: []any{"userName", "ew", `"sen"`}},
-		{stream: `userName gt "zero"`, position: 18, ok: true, result: []any{"userName", "gt", `"zero"`}},
-		{stream: `userName ge "zero"`, position: 18, ok: true, result: []any{"userName", "ge", `"zero"`}},
-		{stream: `userName lt "zero"`, position: 18, ok: true, result: []any{"userName", "lt", `"zero"`}},
-		{stream: `userName le "zero"`, position: 18, ok: true, result: []any{"userName", "le", `"zero"`}},
+		{stream: `userName eq "bjensen"`, position: 21, ok: true, result: []ASTNode{"userName", "eq", `"bjensen"`}},
+		{stream: `userName ne "bjensen"`, position: 21, ok: true, result: []ASTNode{"userName", "ne", `"bjensen"`}},
+		{stream: `userName co "jen"`, position: 17, ok: true, result: []ASTNode{"userName", "co", `"jen"`}},
+		{stream: `userName sw "bjen"`, position: 18, ok: true, result: []ASTNode{"userName", "sw", `"bjen"`}},
+		{stream: `userName ew "sen"`, position: 17, ok: true, result: []ASTNode{"userName", "ew", `"sen"`}},
+		{stream: `userName gt "zero"`, position: 18, ok: true, result: []ASTNode{"userName", "gt", `"zero"`}},
+		{stream: `userName ge "zero"`, position: 18, ok: true, result: []ASTNode{"userName", "ge", `"zero"`}},
+		{stream: `userName lt "zero"`, position: 18, ok: true, result: []ASTNode{"userName", "lt", `"zero"`}},
+		{stream: `userName le "zero"`, position: 18, ok: true, result: []ASTNode{"userName", "le", `"zero"`}},
 	}
 	for _, expected := range tt {
 		t.Run(fmt.Sprintf("%s %d", expected.stream, expected.position), func(t *testing.T) {
@@ -151,4 +155,22 @@ func TestChoice(t *testing.T) {
 			assert.Equal(t, expected.result, result)
 		})
 	}
+}
+
+func TestTag(t *testing.T) {
+	t.Run("returns true", func(t *testing.T) {
+		atom := Tag("filter", Sequence(
+			Str("userName"),
+			Space(),
+			Str("eq"),
+			Space(),
+			Match(`"[a-z]+"`),
+		))
+		ctx := &Context{stream: `userName eq "bjensen"`}
+		result, ok := atom(ctx)
+
+		assert.Equal(t, true, ok)
+		assert.Equal(t, 21, ctx.pos)
+		assert.Equal(t, Token{"filter": []ASTNode{"userName", "eq", `"bjensen"`}}, result)
+	})
 }

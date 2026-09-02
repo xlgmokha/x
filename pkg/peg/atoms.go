@@ -11,10 +11,12 @@ type Context struct {
 	pos    int
 }
 
-type Parser func(c *Context) (any, bool)
+type ASTNode any
+type Token map[string]ASTNode
+type Parser func(c *Context) (ASTNode, bool)
 
 func Space() Parser {
-	return func(c *Context) (any, bool) {
+	return func(c *Context) (ASTNode, bool) {
 		for c.pos < len(c.stream) && unicode.IsSpace(rune(c.stream[c.pos])) {
 			c.pos++
 		}
@@ -23,9 +25,8 @@ func Space() Parser {
 }
 
 func Str(s string) Parser {
-	return func(c *Context) (any, bool) {
+	return func(c *Context) (ASTNode, bool) {
 		start := c.pos
-		Space()(c)
 		if c.pos+len(s) <= len(c.stream) && strings.EqualFold(c.stream[c.pos:c.pos+len(s)], s) {
 			c.pos += len(s)
 			return s, true
@@ -37,9 +38,8 @@ func Str(s string) Parser {
 
 func Match(pattern string) Parser {
 	re := regexp.MustCompile("^" + pattern)
-	return func(c *Context) (any, bool) {
+	return func(c *Context) (ASTNode, bool) {
 		start := c.pos
-		Space()(c)
 		loc := re.FindStringIndex(c.stream[c.pos:])
 		if loc != nil {
 			res := c.stream[c.pos : c.pos+loc[1]]
@@ -52,9 +52,9 @@ func Match(pattern string) Parser {
 }
 
 func Sequence(parslets ...Parser) Parser {
-	return func(c *Context) (any, bool) {
+	return func(c *Context) (ASTNode, bool) {
 		start := c.pos
-		var results []any
+		var results []ASTNode
 		for _, p := range parslets {
 			val, ok := p(c)
 			if !ok {
@@ -70,7 +70,7 @@ func Sequence(parslets ...Parser) Parser {
 }
 
 func Choice(parslets ...Parser) Parser {
-	return func(c *Context) (any, bool) {
+	return func(c *Context) (ASTNode, bool) {
 		start := c.pos
 		for _, p := range parslets {
 			if val, ok := p(c); ok {
@@ -79,5 +79,15 @@ func Choice(parslets ...Parser) Parser {
 			c.pos = start
 		}
 		return nil, false
+	}
+}
+
+func Tag(key string, p Parser) Parser {
+	return func(c *Context) (ASTNode, bool) {
+		val, ok := p(c)
+		if !ok {
+			return nil, false
+		}
+		return Token{key: val}, true
 	}
 }
