@@ -52,6 +52,6 @@ vet:
 
 test:
 	@go clean -testcache
-	@go test -race -shuffle=on ./...
+	@CGO_ENABLED=1 go test -race -shuffle=on ./...
 
 ci: fmt-check vet test
