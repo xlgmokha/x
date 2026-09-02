@@ -89,3 +89,19 @@ func TestMatch(t *testing.T) {
 		})
 	}
 }
+
+func TestSequence(t *testing.T) {
+	t.Run("returns true", func(t *testing.T) {
+		atom := Sequence(
+			Str("username"),
+			Str("eq"),
+			Match(`"[a-z]+"`),
+		)
+		ctx := &Context{stream: `username eq "bjensen"`}
+		result, ok := atom(ctx)
+
+		assert.Equal(t, true, ok)
+		assert.Equal(t, 21, ctx.pos)
+		assert.Equal(t, []any{"username", "eq", `"bjensen"`}, result)
+	})
+}

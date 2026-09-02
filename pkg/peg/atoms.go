@@ -50,3 +50,21 @@ func Match(pattern string) Parser {
 		return nil, false
 	}
 }
+
+func Sequence(parslets ...Parser) Parser {
+	return func(c *Context) (any, bool) {
+		start := c.pos
+		var results []any
+		for _, p := range parslets {
+			val, ok := p(c)
+			if !ok {
+				c.pos = start
+				return nil, false
+			}
+			if val != nil {
+				results = append(results, val)
+			}
+		}
+		return results, true
+	}
+}
