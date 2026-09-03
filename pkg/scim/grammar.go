@@ -4,6 +4,7 @@ package scim
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"sync"
@@ -12,6 +13,19 @@ import (
 )
 
 var ErrInvalidFilter = errors.New("scim: invalid filter")
+
+// ParseError reports a filter that does not conform to the RFC 7644 grammar,
+// with the byte offset where parsing stopped. It unwraps to ErrInvalidFilter.
+type ParseError struct {
+	Input    string
+	Position int
+}
+
+func (e *ParseError) Error() string {
+	return fmt.Sprintf("scim: invalid filter at position %d: %q", e.Position, e.Input)
+}
+
+func (e *ParseError) Unwrap() error { return ErrInvalidFilter }
 
 var (
 	reAttributeName = regexp.MustCompile(`\A[a-zA-Z][a-zA-Z0-9_\-]*`)
@@ -37,15 +51,15 @@ func (g *Grammar) Parse(text string) (*Node, error) {
 	ctx := peg.NewContext(text)
 	raw, err := g.filter(ctx)
 	if err != nil {
-		return nil, ErrInvalidFilter
+		return nil, &ParseError{Input: text, Position: ctx.Position()}
 	}
 	peg.Space()(ctx)
 	if ctx.Position() != len(text) {
-		return nil, ErrInvalidFilter
+		return nil, &ParseError{Input: text, Position: ctx.Position()}
 	}
 	node := newNode(raw)
 	if node == nil {
-		return nil, ErrInvalidFilter
+		return nil, &ParseError{Input: text, Position: ctx.Position()}
 	}
 	return node, nil
 }

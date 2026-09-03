@@ -20,47 +20,47 @@ func (StringifyVisitor) VisitNot(operand string) (string, error) {
 	return fmt.Sprintf("not (%s)", operand), nil
 }
 
-func (StringifyVisitor) VisitEquals(attribute string, value any) (string, error) {
+func (StringifyVisitor) VisitEquals(attribute AttrPath, value any) (string, error) {
 	return compareString(attribute, "eq", value), nil
 }
 
-func (StringifyVisitor) VisitNotEquals(attribute string, value any) (string, error) {
+func (StringifyVisitor) VisitNotEquals(attribute AttrPath, value any) (string, error) {
 	return compareString(attribute, "ne", value), nil
 }
 
-func (StringifyVisitor) VisitContains(attribute string, value any) (string, error) {
+func (StringifyVisitor) VisitContains(attribute AttrPath, value any) (string, error) {
 	return compareString(attribute, "co", value), nil
 }
 
-func (StringifyVisitor) VisitStartsWith(attribute string, value any) (string, error) {
+func (StringifyVisitor) VisitStartsWith(attribute AttrPath, value any) (string, error) {
 	return compareString(attribute, "sw", value), nil
 }
 
-func (StringifyVisitor) VisitEndsWith(attribute string, value any) (string, error) {
+func (StringifyVisitor) VisitEndsWith(attribute AttrPath, value any) (string, error) {
 	return compareString(attribute, "ew", value), nil
 }
 
-func (StringifyVisitor) VisitGreaterThan(attribute string, value any) (string, error) {
+func (StringifyVisitor) VisitGreaterThan(attribute AttrPath, value any) (string, error) {
 	return compareString(attribute, "gt", value), nil
 }
 
-func (StringifyVisitor) VisitGreaterThanEquals(attribute string, value any) (string, error) {
+func (StringifyVisitor) VisitGreaterThanEquals(attribute AttrPath, value any) (string, error) {
 	return compareString(attribute, "ge", value), nil
 }
 
-func (StringifyVisitor) VisitLessThan(attribute string, value any) (string, error) {
+func (StringifyVisitor) VisitLessThan(attribute AttrPath, value any) (string, error) {
 	return compareString(attribute, "lt", value), nil
 }
 
-func (StringifyVisitor) VisitLessThanEquals(attribute string, value any) (string, error) {
+func (StringifyVisitor) VisitLessThanEquals(attribute AttrPath, value any) (string, error) {
 	return compareString(attribute, "le", value), nil
 }
 
-func (StringifyVisitor) VisitPresence(attribute string) (string, error) {
+func (StringifyVisitor) VisitPresence(attribute AttrPath) (string, error) {
 	return fmt.Sprintf("%s pr", attribute), nil
 }
 
-func (StringifyVisitor) VisitValuePath(path string, subAttribute string, valueFilter func() (string, error)) (string, error) {
+func (StringifyVisitor) VisitValuePath(path AttrPath, subAttribute string, valueFilter func() (string, error)) (string, error) {
 	vf, err := valueFilter()
 	if err != nil {
 		return "", err
@@ -71,7 +71,7 @@ func (StringifyVisitor) VisitValuePath(path string, subAttribute string, valueFi
 	return fmt.Sprintf("%s[%s].%s", path, vf, subAttribute), nil
 }
 
-func compareString(attribute, operator string, value any) string {
+func compareString(attribute AttrPath, operator string, value any) string {
 	return fmt.Sprintf("%s %s %s", attribute, operator, stringifyValue(value))
 }
 

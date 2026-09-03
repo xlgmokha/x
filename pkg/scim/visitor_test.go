@@ -43,20 +43,20 @@ func TestStringifyVisitorRoundTrip(t *testing.T) {
 
 type countingVisitor struct{}
 
-func (countingVisitor) VisitAnd(left, right int) (int, error)           { return left + right, nil }
-func (countingVisitor) VisitOr(left, right int) (int, error)            { return left + right, nil }
-func (countingVisitor) VisitNot(operand int) (int, error)               { return operand + 100, nil }
-func (countingVisitor) VisitEquals(string, any) (int, error)            { return 1, nil }
-func (countingVisitor) VisitNotEquals(string, any) (int, error)         { return 1, nil }
-func (countingVisitor) VisitContains(string, any) (int, error)          { return 1, nil }
-func (countingVisitor) VisitStartsWith(string, any) (int, error)        { return 1, nil }
-func (countingVisitor) VisitEndsWith(string, any) (int, error)          { return 1, nil }
-func (countingVisitor) VisitGreaterThan(string, any) (int, error)       { return 1, nil }
-func (countingVisitor) VisitGreaterThanEquals(string, any) (int, error) { return 1, nil }
-func (countingVisitor) VisitLessThan(string, any) (int, error)          { return 1, nil }
-func (countingVisitor) VisitLessThanEquals(string, any) (int, error)    { return 1, nil }
-func (countingVisitor) VisitPresence(string) (int, error)               { return 1, nil }
-func (countingVisitor) VisitValuePath(_ string, _ string, valueFilter func() (int, error)) (int, error) {
+func (countingVisitor) VisitAnd(left, right int) (int, error)             { return left + right, nil }
+func (countingVisitor) VisitOr(left, right int) (int, error)              { return left + right, nil }
+func (countingVisitor) VisitNot(operand int) (int, error)                 { return operand + 100, nil }
+func (countingVisitor) VisitEquals(AttrPath, any) (int, error)            { return 1, nil }
+func (countingVisitor) VisitNotEquals(AttrPath, any) (int, error)         { return 1, nil }
+func (countingVisitor) VisitContains(AttrPath, any) (int, error)          { return 1, nil }
+func (countingVisitor) VisitStartsWith(AttrPath, any) (int, error)        { return 1, nil }
+func (countingVisitor) VisitEndsWith(AttrPath, any) (int, error)          { return 1, nil }
+func (countingVisitor) VisitGreaterThan(AttrPath, any) (int, error)       { return 1, nil }
+func (countingVisitor) VisitGreaterThanEquals(AttrPath, any) (int, error) { return 1, nil }
+func (countingVisitor) VisitLessThan(AttrPath, any) (int, error)          { return 1, nil }
+func (countingVisitor) VisitLessThanEquals(AttrPath, any) (int, error)    { return 1, nil }
+func (countingVisitor) VisitPresence(AttrPath) (int, error)               { return 1, nil }
+func (countingVisitor) VisitValuePath(_ AttrPath, _ string, valueFilter func() (int, error)) (int, error) {
 	return valueFilter()
 }
 
@@ -92,32 +92,34 @@ func TestVisitDispatch(t *testing.T) {
 
 type scopeVisitor struct{ scope []string }
 
-func (v *scopeVisitor) qualify(attribute string) string {
+func (v *scopeVisitor) qualify(attribute AttrPath) string {
 	if len(v.scope) == 0 {
-		return attribute
+		return attribute.String()
 	}
-	return v.scope[len(v.scope)-1] + "." + attribute
+	return v.scope[len(v.scope)-1] + "." + attribute.String()
 }
 
 func (v *scopeVisitor) VisitAnd(l, r string) (string, error) { return l + " AND " + r, nil }
 func (v *scopeVisitor) VisitOr(l, r string) (string, error)  { return l + " OR " + r, nil }
 func (v *scopeVisitor) VisitNot(o string) (string, error)    { return "NOT " + o, nil }
-func (v *scopeVisitor) VisitEquals(a string, _ any) (string, error) {
+func (v *scopeVisitor) VisitEquals(a AttrPath, _ any) (string, error) {
 	return v.qualify(a) + " = ?", nil
 }
-func (v *scopeVisitor) VisitNotEquals(a string, _ any) (string, error)   { return v.qualify(a), nil }
-func (v *scopeVisitor) VisitContains(a string, _ any) (string, error)    { return v.qualify(a), nil }
-func (v *scopeVisitor) VisitStartsWith(a string, _ any) (string, error)  { return v.qualify(a), nil }
-func (v *scopeVisitor) VisitEndsWith(a string, _ any) (string, error)    { return v.qualify(a), nil }
-func (v *scopeVisitor) VisitGreaterThan(a string, _ any) (string, error) { return v.qualify(a), nil }
-func (v *scopeVisitor) VisitGreaterThanEquals(a string, _ any) (string, error) {
+func (v *scopeVisitor) VisitNotEquals(a AttrPath, _ any) (string, error)   { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitContains(a AttrPath, _ any) (string, error)    { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitStartsWith(a AttrPath, _ any) (string, error)  { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitEndsWith(a AttrPath, _ any) (string, error)    { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitGreaterThan(a AttrPath, _ any) (string, error) { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitGreaterThanEquals(a AttrPath, _ any) (string, error) {
 	return v.qualify(a), nil
 }
-func (v *scopeVisitor) VisitLessThan(a string, _ any) (string, error)       { return v.qualify(a), nil }
-func (v *scopeVisitor) VisitLessThanEquals(a string, _ any) (string, error) { return v.qualify(a), nil }
-func (v *scopeVisitor) VisitPresence(a string) (string, error)              { return v.qualify(a), nil }
-func (v *scopeVisitor) VisitValuePath(path string, _ string, valueFilter func() (string, error)) (string, error) {
-	v.scope = append(v.scope, path)
+func (v *scopeVisitor) VisitLessThan(a AttrPath, _ any) (string, error) { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitLessThanEquals(a AttrPath, _ any) (string, error) {
+	return v.qualify(a), nil
+}
+func (v *scopeVisitor) VisitPresence(a AttrPath) (string, error) { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitValuePath(path AttrPath, _ string, valueFilter func() (string, error)) (string, error) {
+	v.scope = append(v.scope, path.String())
 	inner, err := valueFilter()
 	v.scope = v.scope[:len(v.scope)-1]
 	if err != nil {

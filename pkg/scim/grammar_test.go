@@ -220,6 +220,18 @@ func TestGrammarRejectsTrailingGarbage(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestParseErrorReportsPosition(t *testing.T) {
+	g := &Grammar{}
+	input := `userName eq "bjensen" garbage`
+	_, err := g.Parse(input)
+
+	require.ErrorIs(t, err, ErrInvalidFilter)
+	var perr *ParseError
+	require.ErrorAs(t, err, &perr)
+	assert.Equal(t, input, perr.Input)
+	assert.Equal(t, len("userName eq \"bjensen\" "), perr.Position)
+}
+
 func TestGrammarTrailingWhitespaceIsTolerated(t *testing.T) {
 	g := &Grammar{}
 	node, err := g.Parse(`userName eq "bjensen"   `)
