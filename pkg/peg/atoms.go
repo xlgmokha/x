@@ -6,19 +6,14 @@ import (
 	"unicode"
 )
 
-type Context struct {
-	stream string
-	pos    int
-}
-
 type ASTNode any
 type Token map[string]ASTNode
 type Parser func(c *Context) (ASTNode, bool)
 
 func Space() Parser {
 	return func(c *Context) (ASTNode, bool) {
-		for c.pos < len(c.stream) && unicode.IsSpace(rune(c.stream[c.pos])) {
-			c.pos++
+		for c.position < len(c.stream) && unicode.IsSpace(rune(c.stream[c.position])) {
+			c.position++
 		}
 		return nil, true
 	}
@@ -26,12 +21,12 @@ func Space() Parser {
 
 func Str(s string) Parser {
 	return func(c *Context) (ASTNode, bool) {
-		start := c.pos
-		if c.pos+len(s) <= len(c.stream) && strings.EqualFold(c.stream[c.pos:c.pos+len(s)], s) {
-			c.pos += len(s)
+		start := c.position
+		if c.position+len(s) <= len(c.stream) && strings.EqualFold(c.stream[c.position:c.position+len(s)], s) {
+			c.position += len(s)
 			return s, true
 		}
-		c.pos = start
+		c.position = start
 		return nil, false
 	}
 }
@@ -39,26 +34,26 @@ func Str(s string) Parser {
 func Match(pattern string) Parser {
 	re := regexp.MustCompile("^" + pattern)
 	return func(c *Context) (ASTNode, bool) {
-		start := c.pos
-		loc := re.FindStringIndex(c.stream[c.pos:])
+		start := c.position
+		loc := re.FindStringIndex(c.stream[c.position:])
 		if loc != nil {
-			res := c.stream[c.pos : c.pos+loc[1]]
-			c.pos += loc[1]
+			res := c.stream[c.position : c.position+loc[1]]
+			c.position += loc[1]
 			return res, true
 		}
-		c.pos = start
+		c.position = start
 		return nil, false
 	}
 }
 
 func Sequence(parslets ...Parser) Parser {
 	return func(c *Context) (ASTNode, bool) {
-		start := c.pos
+		start := c.position
 		var results []ASTNode
 		for _, p := range parslets {
 			val, ok := p(c)
 			if !ok {
-				c.pos = start
+				c.position = start
 				return nil, false
 			}
 			if val != nil {
@@ -71,12 +66,12 @@ func Sequence(parslets ...Parser) Parser {
 
 func Choice(parslets ...Parser) Parser {
 	return func(c *Context) (ASTNode, bool) {
-		start := c.pos
+		start := c.position
 		for _, p := range parslets {
 			if val, ok := p(c); ok {
 				return val, true
 			}
-			c.pos = start
+			c.position = start
 		}
 		return nil, false
 	}

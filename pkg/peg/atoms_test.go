@@ -25,11 +25,11 @@ func TestSpace(t *testing.T) {
 	}
 	for _, expected := range tt {
 		t.Run(fmt.Sprintf("%s %d", expected.stream, expected.position), func(t *testing.T) {
-			ctx := &Context{stream: expected.stream}
+			ctx := NewContext(expected.stream)
 			item, ok := atom(ctx)
 
 			require.Nil(t, item)
-			assert.Equal(t, expected.position, ctx.pos)
+			assert.Equal(t, expected.position, ctx.position)
 			assert.True(t, ok)
 		})
 	}
@@ -52,11 +52,11 @@ func TestStr(t *testing.T) {
 	for _, expected := range tt {
 		t.Run(fmt.Sprintf("%s %d", expected.stream, expected.position), func(t *testing.T) {
 			atom := Str(expected.input)
-			ctx := &Context{stream: expected.stream}
+			ctx := NewContext(expected.stream)
 			result, ok := atom(ctx)
 
 			assert.Equal(t, expected.ok, ok)
-			assert.Equal(t, expected.position, ctx.pos)
+			assert.Equal(t, expected.position, ctx.position)
 			assert.Equal(t, expected.result, result)
 		})
 	}
@@ -80,11 +80,11 @@ func TestMatch(t *testing.T) {
 	for _, expected := range tt {
 		t.Run(fmt.Sprintf("%s %d", expected.stream, expected.position), func(t *testing.T) {
 			atom := Match(expected.re)
-			ctx := &Context{stream: expected.stream}
+			ctx := NewContext(expected.stream)
 			result, ok := atom(ctx)
 
 			assert.Equal(t, expected.ok, ok)
-			assert.Equal(t, expected.position, ctx.pos)
+			assert.Equal(t, expected.position, ctx.position)
 			assert.Equal(t, expected.result, result)
 		})
 	}
@@ -108,7 +108,7 @@ func TestMatchNoMatch(t *testing.T) {
 
 			assert.False(t, ok)
 			assert.Nil(t, result)
-			assert.Equal(t, 0, ctx.pos)
+			assert.Equal(t, 0, ctx.position)
 		})
 	}
 }
@@ -122,11 +122,11 @@ func TestSequence(t *testing.T) {
 			Space(),
 			Match(`"[a-z]+"`),
 		)
-		ctx := &Context{stream: `userName eq "bjensen"`}
+		ctx := NewContext(`userName eq "bjensen"`)
 		result, ok := atom(ctx)
 
 		assert.Equal(t, true, ok)
-		assert.Equal(t, 21, ctx.pos)
+		assert.Equal(t, 21, ctx.position)
 		assert.Equal(t, []ASTNode{"userName", "eq", `"bjensen"`}, result)
 	})
 
@@ -141,7 +141,7 @@ func TestSequence(t *testing.T) {
 
 		assert.Equal(t, false, ok)
 		assert.Nil(t, result)
-		assert.Equal(t, 0, ctx.pos)
+		assert.Equal(t, 0, ctx.position)
 	})
 
 	t.Run("collects non-nil results while skipping nil ones", func(t *testing.T) {
@@ -154,7 +154,7 @@ func TestSequence(t *testing.T) {
 		result, ok := atom(ctx)
 
 		assert.Equal(t, true, ok)
-		assert.Equal(t, 3, ctx.pos)
+		assert.Equal(t, 3, ctx.position)
 		assert.Equal(t, []ASTNode{"a", "b"}, result)
 	})
 }
@@ -180,7 +180,7 @@ func TestChoiceNoMatch(t *testing.T) {
 
 			assert.Equal(t, false, ok)
 			assert.Nil(t, result)
-			assert.Equal(t, 0, ctx.pos)
+			assert.Equal(t, 0, ctx.position)
 		})
 	}
 }
@@ -224,11 +224,11 @@ func TestChoice(t *testing.T) {
 	}
 	for _, expected := range tt {
 		t.Run(fmt.Sprintf("%s %d", expected.stream, expected.position), func(t *testing.T) {
-			ctx := &Context{stream: expected.stream}
+			ctx := NewContext(expected.stream)
 			result, ok := atom(ctx)
 
 			assert.Equal(t, expected.ok, ok)
-			assert.Equal(t, expected.position, ctx.pos)
+			assert.Equal(t, expected.position, ctx.position)
 			assert.Equal(t, expected.result, result)
 		})
 	}
@@ -243,11 +243,11 @@ func TestTag(t *testing.T) {
 			Space(),
 			Match(`"[a-z]+"`),
 		))
-		ctx := &Context{stream: `userName eq "bjensen"`}
+		ctx := NewContext(`userName eq "bjensen"`)
 		result, ok := atom(ctx)
 
 		assert.Equal(t, true, ok)
-		assert.Equal(t, 21, ctx.pos)
+		assert.Equal(t, 21, ctx.position)
 		assert.Equal(t, Token{"filter": []ASTNode{"userName", "eq", `"bjensen"`}}, result)
 	})
 
@@ -258,6 +258,6 @@ func TestTag(t *testing.T) {
 
 		assert.Equal(t, false, ok)
 		assert.Nil(t, result)
-		assert.Equal(t, 0, ctx.pos)
+		assert.Equal(t, 0, ctx.position)
 	})
 }
