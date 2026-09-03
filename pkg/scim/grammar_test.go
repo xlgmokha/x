@@ -220,6 +220,33 @@ func TestGrammarRejectsTrailingGarbage(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestParseRejectsOversizedInput(t *testing.T) {
+	g := &Grammar{MaxInputBytes: 16}
+
+	t.Run("input over the cap is rejected before parsing", func(t *testing.T) {
+		_, err := g.Parse(`userName eq "bjensen"`) // 21 bytes > 16
+		require.ErrorIs(t, err, ErrInputTooLarge)
+		assert.NotErrorIs(t, err, ErrInvalidFilter)
+	})
+
+	t.Run("input within the cap still parses", func(t *testing.T) {
+		node, err := g.Parse(`a eq "1"`) // 8 bytes <= 16
+		require.NoError(t, err)
+		assert.Equal(t, "a", node.Attribute())
+	})
+}
+
+func TestParseDefaultIsUnbounded(t *testing.T) {
+	g := New() // MaxInputBytes defaults to 0
+	const depth = 4000
+	input := strings.Repeat("(", depth) + `a eq "1"` + strings.Repeat(")", depth)
+
+	node, err := g.Parse(input)
+
+	require.NoError(t, err)
+	assert.Equal(t, "a", node.Attribute())
+}
+
 func TestParseErrorReportsPosition(t *testing.T) {
 	g := &Grammar{}
 	input := `userName eq "bjensen" garbage`

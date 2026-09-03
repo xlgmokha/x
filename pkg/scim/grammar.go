@@ -14,8 +14,9 @@ import (
 
 var ErrInvalidFilter = errors.New("scim: invalid filter")
 
-// ParseError reports a filter that does not conform to the RFC 7644 grammar,
-// with the byte offset where parsing stopped. It unwraps to ErrInvalidFilter.
+var ErrInputTooLarge = errors.New("scim: filter exceeds MaxInputBytes")
+
+// ParseError reports a filter that does not conform to the RFC 7644 grammar
 type ParseError struct {
 	Input    string
 	Position int
@@ -35,6 +36,10 @@ var (
 )
 
 type Grammar struct {
+	// MaxInputBytes, when > 0, makes Parse reject filters longer than this many
+	// bytes before parsing (0 = unbounded, the default).
+	MaxInputBytes int
+
 	once        sync.Once
 	filter      peg.Parser
 	valueFilter peg.Parser
@@ -46,7 +51,11 @@ func New() *Grammar {
 	return g
 }
 
+// Parse reads a SCIM filter (RFC 7644 3.4.2.2) and returns its AST, or a *ParseError on malformed input.
 func (g *Grammar) Parse(text string) (*Node, error) {
+	if g.MaxInputBytes > 0 && len(text) > g.MaxInputBytes {
+		return nil, ErrInputTooLarge
+	}
 	g.once.Do(g.build)
 	ctx := peg.NewContext(text)
 	raw, err := g.filter(ctx)
