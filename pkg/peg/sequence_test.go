@@ -1,6 +1,7 @@
 package peg
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,7 @@ func TestSequence(t *testing.T) {
 			Space(),
 			Str("eq"),
 			Space(),
-			Match(`"[a-z]+"`),
+			Match(regexp.MustCompile(`"[a-z]+"`)),
 		)
 		ctx := NewContext(`userName eq "bjensen"`)
 		result, ok := atom(ctx)

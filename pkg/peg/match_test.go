@@ -2,6 +2,7 @@ package peg
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ func TestMatch(t *testing.T) {
 	}
 	for _, expected := range tt {
 		t.Run(fmt.Sprintf("%s %d", expected.stream, expected.position), func(t *testing.T) {
-			atom := Match(expected.re)
+			atom := Match(regexp.MustCompile(expected.re))
 			ctx := NewContext(expected.stream)
 			result, ok := atom(ctx)
 
@@ -47,7 +48,7 @@ func TestMatchNoMatch(t *testing.T) {
 	}
 	for _, expected := range tt {
 		t.Run(fmt.Sprintf("%s %s", expected.stream, expected.re), func(t *testing.T) {
-			atom := Match(expected.re)
+			atom := Match(regexp.MustCompile(expected.re))
 			ctx := &Context{stream: expected.stream}
 			result, ok := atom(ctx)
 

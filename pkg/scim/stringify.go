@@ -1,0 +1,86 @@
+package scim
+
+import (
+	"fmt"
+	"strconv"
+)
+
+type StringifyVisitor struct{}
+
+func (StringifyVisitor) VisitAnd(left, right string) (string, error) {
+	return fmt.Sprintf("(%s and %s)", left, right), nil
+}
+
+func (StringifyVisitor) VisitOr(left, right string) (string, error) {
+	return fmt.Sprintf("(%s or %s)", left, right), nil
+}
+
+func (StringifyVisitor) VisitNot(operand string) (string, error) {
+	return fmt.Sprintf("not (%s)", operand), nil
+}
+
+func (StringifyVisitor) VisitEquals(attribute string, value any) (string, error) {
+	return compareString(attribute, "eq", value), nil
+}
+
+func (StringifyVisitor) VisitNotEquals(attribute string, value any) (string, error) {
+	return compareString(attribute, "ne", value), nil
+}
+
+func (StringifyVisitor) VisitContains(attribute string, value any) (string, error) {
+	return compareString(attribute, "co", value), nil
+}
+
+func (StringifyVisitor) VisitStartsWith(attribute string, value any) (string, error) {
+	return compareString(attribute, "sw", value), nil
+}
+
+func (StringifyVisitor) VisitEndsWith(attribute string, value any) (string, error) {
+	return compareString(attribute, "ew", value), nil
+}
+
+func (StringifyVisitor) VisitGreaterThan(attribute string, value any) (string, error) {
+	return compareString(attribute, "gt", value), nil
+}
+
+func (StringifyVisitor) VisitGreaterThanEquals(attribute string, value any) (string, error) {
+	return compareString(attribute, "ge", value), nil
+}
+
+func (StringifyVisitor) VisitLessThan(attribute string, value any) (string, error) {
+	return compareString(attribute, "lt", value), nil
+}
+
+func (StringifyVisitor) VisitLessThanEquals(attribute string, value any) (string, error) {
+	return compareString(attribute, "le", value), nil
+}
+
+func (StringifyVisitor) VisitPresence(attribute string) (string, error) {
+	return fmt.Sprintf("%s pr", attribute), nil
+}
+
+func (StringifyVisitor) VisitValuePath(path string, valueFilter string, subAttribute string) (string, error) {
+	if subAttribute == "" {
+		return fmt.Sprintf("%s[%s]", path, valueFilter), nil
+	}
+	return fmt.Sprintf("%s[%s].%s", path, valueFilter, subAttribute), nil
+}
+
+func compareString(attribute, operator string, value any) string {
+	return fmt.Sprintf("%s %s %s", attribute, operator, stringifyValue(value))
+}
+
+func stringifyValue(value any) string {
+	switch v := value.(type) {
+	case string:
+		return strconv.Quote(v)
+	case bool:
+		return strconv.FormatBool(v)
+	case float64:
+		return strconv.FormatFloat(v, 'g', -1, 64)
+	case nil:
+		return "null"
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}

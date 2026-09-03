@@ -2,6 +2,7 @@ package peg
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,7 @@ func TestChoice(t *testing.T) {
 			Str("le"),
 		),
 		Space(),
-		Match(`"[a-z]+"`),
+		Match(regexp.MustCompile(`"[a-z]+"`)),
 	)
 
 	tt := []struct {

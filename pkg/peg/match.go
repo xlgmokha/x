@@ -4,9 +4,7 @@ import (
 	"regexp"
 )
 
-func Match(pattern string) Parser {
-	re := regexp.MustCompile("^" + pattern)
-
+func Match(re *regexp.Regexp) Parser {
 	return func(c *Context) (ASTNode, bool) {
 		start := c.position
 		loc := re.FindStringIndex(c.stream[c.position:])
