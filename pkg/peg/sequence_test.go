@@ -17,9 +17,9 @@ func TestSequence(t *testing.T) {
 			Match(regexp.MustCompile(`"[a-z]+"`)),
 		)
 		ctx := NewContext(`userName eq "bjensen"`)
-		result, ok := atom(ctx)
+		result, err := atom(ctx)
 
-		assert.Equal(t, true, ok)
+		assert.NoError(t, err)
 		assert.Equal(t, 21, ctx.position)
 		assert.Equal(t, []ASTNode{"userName", "eq", `"bjensen"`}, result)
 	})
@@ -31,9 +31,9 @@ func TestSequence(t *testing.T) {
 			Str("ne"),
 		)
 		ctx := &Context{stream: `userName eq "bjensen"`}
-		result, ok := atom(ctx)
+		result, err := atom(ctx)
 
-		assert.Equal(t, false, ok)
+		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Equal(t, 0, ctx.position)
 	})
@@ -45,9 +45,9 @@ func TestSequence(t *testing.T) {
 			Str("b"),
 		)
 		ctx := &Context{stream: "a b"}
-		result, ok := atom(ctx)
+		result, err := atom(ctx)
 
-		assert.Equal(t, true, ok)
+		assert.NoError(t, err)
 		assert.Equal(t, 3, ctx.position)
 		assert.Equal(t, []ASTNode{"a", "b"}, result)
 	})
@@ -59,9 +59,9 @@ func TestSequence(t *testing.T) {
 			Tag("b", Str("y")),
 		)
 		ctx := NewContext("x,y")
-		result, ok := atom(ctx)
+		result, err := atom(ctx)
 
-		assert.Equal(t, true, ok)
+		assert.NoError(t, err)
 		assert.Equal(t, Token{"a": "x", "b": "y"}, result)
 	})
 
@@ -74,9 +74,9 @@ func TestSequence(t *testing.T) {
 			Str(")"),
 		)
 		ctx := NewContext("( userName )")
-		result, ok := atom(ctx)
+		result, err := atom(ctx)
 
-		assert.Equal(t, true, ok)
+		assert.NoError(t, err)
 		assert.Equal(t, Token{"attribute": "userName"}, result)
 	})
 }

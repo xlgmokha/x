@@ -27,14 +27,14 @@ func TestStringifyVisitorRoundTrip(t *testing.T) {
 	g := &Grammar{}
 	for _, input := range tt {
 		t.Run(input, func(t *testing.T) {
-			original, ok := g.Parse(input)
-			require.True(t, ok)
+			original, err := g.Parse(input)
+			require.NoError(t, err)
 
 			text, err := Visit[string](StringifyVisitor{}, original)
 			require.NoError(t, err)
 
-			reparsed, ok := g.Parse(text)
-			require.True(t, ok)
+			reparsed, err := g.Parse(text)
+			require.NoError(t, err)
 
 			assert.Equal(t, original, reparsed)
 		})
@@ -56,14 +56,16 @@ func (countingVisitor) VisitGreaterThanEquals(string, any) (int, error) { return
 func (countingVisitor) VisitLessThan(string, any) (int, error)          { return 1, nil }
 func (countingVisitor) VisitLessThanEquals(string, any) (int, error)    { return 1, nil }
 func (countingVisitor) VisitPresence(string) (int, error)               { return 1, nil }
-func (countingVisitor) VisitValuePath(string, int, string) (int, error) { return 1, nil }
+func (countingVisitor) VisitValuePath(_ string, _ string, valueFilter func() (int, error)) (int, error) {
+	return valueFilter()
+}
 
 func TestVisitDispatch(t *testing.T) {
 	g := &Grammar{}
 
 	t.Run("counts leaves across and/or", func(t *testing.T) {
-		node, ok := g.Parse(`a eq "1" and b eq "2" and c eq "3"`)
-		require.True(t, ok)
+		node, err := g.Parse(`a eq "1" and b eq "2" and c eq "3"`)
+		require.NoError(t, err)
 
 		count, err := Visit[int](countingVisitor{}, node)
 
@@ -72,8 +74,8 @@ func TestVisitDispatch(t *testing.T) {
 	})
 
 	t.Run("not adds 100 on top of the underlying result", func(t *testing.T) {
-		node, ok := g.Parse(`not (userName eq "bjensen")`)
-		require.True(t, ok)
+		node, err := g.Parse(`not (userName eq "bjensen")`)
+		require.NoError(t, err)
 
 		count, err := Visit[int](countingVisitor{}, node)
 
@@ -86,4 +88,51 @@ func TestVisitDispatch(t *testing.T) {
 
 		assert.Error(t, err)
 	})
+}
+
+type scopeVisitor struct{ scope []string }
+
+func (v *scopeVisitor) qualify(attribute string) string {
+	if len(v.scope) == 0 {
+		return attribute
+	}
+	return v.scope[len(v.scope)-1] + "." + attribute
+}
+
+func (v *scopeVisitor) VisitAnd(l, r string) (string, error) { return l + " AND " + r, nil }
+func (v *scopeVisitor) VisitOr(l, r string) (string, error)  { return l + " OR " + r, nil }
+func (v *scopeVisitor) VisitNot(o string) (string, error)    { return "NOT " + o, nil }
+func (v *scopeVisitor) VisitEquals(a string, _ any) (string, error) {
+	return v.qualify(a) + " = ?", nil
+}
+func (v *scopeVisitor) VisitNotEquals(a string, _ any) (string, error)   { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitContains(a string, _ any) (string, error)    { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitStartsWith(a string, _ any) (string, error)  { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitEndsWith(a string, _ any) (string, error)    { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitGreaterThan(a string, _ any) (string, error) { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitGreaterThanEquals(a string, _ any) (string, error) {
+	return v.qualify(a), nil
+}
+func (v *scopeVisitor) VisitLessThan(a string, _ any) (string, error)       { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitLessThanEquals(a string, _ any) (string, error) { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitPresence(a string) (string, error)              { return v.qualify(a), nil }
+func (v *scopeVisitor) VisitValuePath(path string, _ string, valueFilter func() (string, error)) (string, error) {
+	v.scope = append(v.scope, path)
+	inner, err := valueFilter()
+	v.scope = v.scope[:len(v.scope)-1]
+	if err != nil {
+		return "", err
+	}
+	return "EXISTS(" + inner + ")", nil
+}
+
+func TestVisitValuePathThreadsScope(t *testing.T) {
+	g := &Grammar{}
+	node, err := g.Parse(`emails[type eq "work" and primary eq true]`)
+	require.NoError(t, err)
+
+	got, err := Visit[string](&scopeVisitor{}, node)
+
+	require.NoError(t, err)
+	assert.Equal(t, "EXISTS(emails.type = ? AND emails.primary = ?)", got)
 }

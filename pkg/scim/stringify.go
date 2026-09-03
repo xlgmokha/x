@@ -1,6 +1,7 @@
 package scim
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 )
@@ -59,11 +60,15 @@ func (StringifyVisitor) VisitPresence(attribute string) (string, error) {
 	return fmt.Sprintf("%s pr", attribute), nil
 }
 
-func (StringifyVisitor) VisitValuePath(path string, valueFilter string, subAttribute string) (string, error) {
-	if subAttribute == "" {
-		return fmt.Sprintf("%s[%s]", path, valueFilter), nil
+func (StringifyVisitor) VisitValuePath(path string, subAttribute string, valueFilter func() (string, error)) (string, error) {
+	vf, err := valueFilter()
+	if err != nil {
+		return "", err
 	}
-	return fmt.Sprintf("%s[%s].%s", path, valueFilter, subAttribute), nil
+	if subAttribute == "" {
+		return fmt.Sprintf("%s[%s]", path, vf), nil
+	}
+	return fmt.Sprintf("%s[%s].%s", path, vf, subAttribute), nil
 }
 
 func compareString(attribute, operator string, value any) string {
@@ -73,7 +78,8 @@ func compareString(attribute, operator string, value any) string {
 func stringifyValue(value any) string {
 	switch v := value.(type) {
 	case string:
-		return strconv.Quote(v)
+		b, _ := json.Marshal(v)
+		return string(b)
 	case bool:
 		return strconv.FormatBool(v)
 	case float64:

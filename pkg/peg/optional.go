@@ -1,12 +1,12 @@
 package peg
 
 func Optional(p Parser) Parser {
-	return func(c *Context) (ASTNode, bool) {
+	return func(c *Context) (ASTNode, error) {
 		start := c.position
-		if val, ok := p(c); ok {
-			return val, true
+		if val, err := p(c); err == nil {
+			return val, nil
 		}
 		c.position = start
-		return nil, true
+		return nil, nil
 	}
 }

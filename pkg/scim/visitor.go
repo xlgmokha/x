@@ -19,7 +19,7 @@ type Visitor[T any] interface {
 	VisitLessThan(attribute string, value any) (T, error)
 	VisitLessThanEquals(attribute string, value any) (T, error)
 	VisitPresence(attribute string) (T, error)
-	VisitValuePath(path string, valueFilter T, subAttribute string) (T, error)
+	VisitValuePath(path string, subAttribute string, valueFilter func() (T, error)) (T, error)
 }
 
 func Visit[T any](v Visitor[T], n *Node) (T, error) {
@@ -41,11 +41,9 @@ func dispatch[T any](v Visitor[T], n *Node) (T, error) {
 	var zero T
 
 	if n.HasPath() {
-		valueFilter, err := Visit(v, n.ValueFilter())
-		if err != nil {
-			return zero, err
-		}
-		return v.VisitValuePath(n.Path(), valueFilter, n.SubAttribute())
+		return v.VisitValuePath(n.Path(), n.SubAttribute(), func() (T, error) {
+			return Visit(v, n.ValueFilter())
+		})
 	}
 
 	switch strings.ToLower(n.Operator()) {

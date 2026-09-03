@@ -10,9 +10,9 @@ func TestOptional(t *testing.T) {
 	t.Run("returns the wrapped value", func(t *testing.T) {
 		atom := Optional(Str("foo"))
 		ctx := NewContext("foobar")
-		result, ok := atom(ctx)
+		result, err := atom(ctx)
 
-		assert.True(t, ok)
+		assert.NoError(t, err)
 		assert.Equal(t, "foo", result)
 		assert.Equal(t, 3, ctx.position)
 	})
@@ -20,9 +20,9 @@ func TestOptional(t *testing.T) {
 	t.Run("succeeds with nil", func(t *testing.T) {
 		atom := Optional(Str("foo"))
 		ctx := NewContext("barfoo")
-		result, ok := atom(ctx)
+		result, err := atom(ctx)
 
-		assert.True(t, ok)
+		assert.NoError(t, err)
 		assert.Nil(t, result)
 		assert.Equal(t, 0, ctx.position)
 	})
@@ -30,9 +30,9 @@ func TestOptional(t *testing.T) {
 	t.Run("composes inside a Sequence", func(t *testing.T) {
 		atom := Sequence(Str("a"), Optional(Str("b")), Str("c"))
 		ctx := NewContext("ac")
-		result, ok := atom(ctx)
+		result, err := atom(ctx)
 
-		assert.True(t, ok)
+		assert.NoError(t, err)
 		assert.Equal(t, []ASTNode{"a", "c"}, result)
 	})
 }

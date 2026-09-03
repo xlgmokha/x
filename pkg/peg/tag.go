@@ -1,11 +1,11 @@
 package peg
 
 func Tag(key string, p Parser) Parser {
-	return func(c *Context) (ASTNode, bool) {
-		val, ok := p(c)
-		if !ok {
-			return nil, false
+	return func(c *Context) (ASTNode, error) {
+		val, err := p(c)
+		if err != nil {
+			return nil, err
 		}
-		return Token{key: val}, true
+		return Token{key: val}, nil
 	}
 }

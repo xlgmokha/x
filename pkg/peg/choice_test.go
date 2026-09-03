@@ -48,9 +48,9 @@ func TestChoice(t *testing.T) {
 	for _, expected := range tt {
 		t.Run(fmt.Sprintf("%s %d", expected.stream, expected.position), func(t *testing.T) {
 			ctx := NewContext(expected.stream)
-			result, ok := atom(ctx)
+			result, err := atom(ctx)
 
-			assert.Equal(t, expected.ok, ok)
+			assert.Equal(t, expected.ok, err == nil)
 			assert.Equal(t, expected.position, ctx.position)
 			assert.Equal(t, expected.result, result)
 		})
@@ -74,9 +74,9 @@ func TestChoiceNoMatch(t *testing.T) {
 	for _, expected := range tt {
 		t.Run(fmt.Sprintf("%s", expected.stream), func(t *testing.T) {
 			ctx := &Context{stream: expected.stream}
-			result, ok := atom(ctx)
+			result, err := atom(ctx)
 
-			assert.Equal(t, false, ok)
+			assert.Error(t, err)
 			assert.Nil(t, result)
 			assert.Equal(t, 0, ctx.position)
 		})

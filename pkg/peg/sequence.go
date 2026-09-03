@@ -1,34 +1,35 @@
 package peg
 
 func Sequence(parslets ...Parser) Parser {
-	return func(c *Context) (ASTNode, bool) {
+	return func(c *Context) (ASTNode, error) {
 		start := c.position
 		var results []ASTNode
 		for _, p := range parslets {
-			val, ok := p(c)
-			if !ok {
+			val, err := p(c)
+			if err != nil {
 				c.position = start
-				return nil, false
+				return nil, err
 			}
 			if val != nil {
 				results = append(results, val)
 			}
 		}
-		merged := Token{}
-		sawToken := false
+		var merged Token
 		for _, r := range results {
 			token, ok := r.(Token)
 			if !ok {
 				continue
 			}
-			sawToken = true
+			if merged == nil {
+				merged = Token{}
+			}
 			for k, v := range token {
 				merged[k] = v
 			}
 		}
-		if !sawToken {
-			return results, true
+		if merged == nil {
+			return results, nil
 		}
-		return merged, true
+		return merged, nil
 	}
 }

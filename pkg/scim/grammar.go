@@ -2,270 +2,253 @@
 package scim
 
 import (
+	"encoding/json"
+	"errors"
 	"regexp"
 	"strconv"
+	"sync"
 
 	"github.com/xlgmokha/x/pkg/peg"
 )
 
-type Grammar struct{}
+var ErrInvalidFilter = errors.New("scim: invalid filter")
 
-func (g *Grammar) Parse(text string) (*Node, bool) {
+var (
+	reAttributeName = regexp.MustCompile(`\A[a-zA-Z][a-zA-Z0-9_\-]*`)
+	reNumber        = regexp.MustCompile(`\A-?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?`)
+	reString        = regexp.MustCompile(`\A"(?:[^"\\]|\\.)*"`)
+	reSchemaURI     = regexp.MustCompile(`\A[A-Za-z][A-Za-z0-9.\-]*(?::[A-Za-z0-9.\-]+)*:`)
+)
+
+type Grammar struct {
+	once        sync.Once
+	filter      peg.Parser
+	valueFilter peg.Parser
+}
+
+func New() *Grammar {
+	g := &Grammar{}
+	g.once.Do(g.build)
+	return g
+}
+
+func (g *Grammar) Parse(text string) (*Node, error) {
+	g.once.Do(g.build)
 	ctx := peg.NewContext(text)
-	raw, ok := g.Filter()(ctx)
-	if !ok {
-		return nil, false
+	raw, err := g.filter(ctx)
+	if err != nil {
+		return nil, ErrInvalidFilter
 	}
 	peg.Space()(ctx)
 	if ctx.Position() != len(text) {
-		return nil, false
+		return nil, ErrInvalidFilter
 	}
 	node := newNode(raw)
-	return node, node != nil
-}
-
-// FILTER = attrExp / logExp / valuePath / *1"not" "(" FILTER ")"
-func (g *Grammar) Filter() peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, bool) {
-		return peg.Choice(
-			g.or(),
-			g.and(),
-		)(c)
+	if node == nil {
+		return nil, ErrInvalidFilter
 	}
+	return node, nil
 }
 
-func (g *Grammar) FilterAtom() peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, bool) {
-		if res, ok := g.notParenGroup()(c); ok {
-			return res, true
+// build wires the grammar once; peg.Ref resolves recursion at parse time.
+func (g *Grammar) build() {
+	filterRef := peg.Ref(&g.filter)
+	valueRef := peg.Ref(&g.valueFilter)
+	attrExp := g.attributeExpression()
+
+	// filterAtom = *1"not" "(" FILTER ")" / attrExp / valuePath
+	filterAtom := peg.Choice(g.parenGroup(filterRef), attrExp, g.valuePath(valueRef))
+	// valFilter atom omits valuePath: RFC forbids a nested value path here.
+	valueAtom := peg.Choice(g.parenGroup(valueRef), attrExp)
+
+	var andFilter, andValue peg.Parser
+	andFilter = g.and(filterAtom, peg.Ref(&andFilter))
+	andValue = g.and(valueAtom, peg.Ref(&andValue))
+
+	g.filter = g.or(andFilter, filterRef)
+	g.valueFilter = g.or(andValue, valueRef)
+}
+
+// logExp = FILTER SP "or" SP FILTER (loosest precedence, right-associative).
+func (g *Grammar) or(left, filter peg.Parser) peg.Parser {
+	return binExpr(left, peg.Fold("or"), "or", filter)
+}
+
+// logExp = FILTER SP "and" SP FILTER (binds tighter than "or").
+func (g *Grammar) and(atom, self peg.Parser) peg.Parser {
+	return binExpr(atom, peg.Fold("and"), "and", self)
+}
+
+// *1"not" "(" sub ")": an optional negation around a parenthesized sub-filter.
+func (g *Grammar) parenGroup(sub peg.Parser) peg.Parser {
+	return func(c *peg.Context) (peg.ASTNode, error) {
+		start := c.Position()
+		_, err := peg.Sequence(peg.Fold("not"), peg.Space())(c)
+		negated := err == nil
+		if _, err := peg.Str("(")(c); err != nil {
+			c.Seek(start)
+			return nil, err
 		}
-		return peg.Choice(
-			g.AttributeExpression(),
-			g.ValuePath(),
-		)(c)
+		inner, err := sub(c)
+		if err != nil {
+			c.Seek(start)
+			return nil, err
+		}
+		if _, err := peg.Str(")")(c); err != nil {
+			c.Seek(start)
+			return nil, err
+		}
+		if !negated {
+			return inner, nil
+		}
+		return peg.Token{"not": inner}, nil
 	}
+}
+
+// valuePath = attrPath "[" valFilter "]" [subAttr]
+func (g *Grammar) valuePath(valueFilter peg.Parser) peg.Parser {
+	return peg.Sequence(
+		peg.Tag("path", g.attributePath()),
+		peg.Str("["),
+		peg.Tag("value_filter", valueFilter),
+		peg.Str("]"),
+		peg.Optional(peg.Tag("sub_attribute", g.subAttribute())),
+	)
 }
 
 // attrExp = (attrPath SP "pr") / (attrPath SP compareOp SP compValue)
-func (g *Grammar) AttributeExpression() peg.Parser {
+func (g *Grammar) attributeExpression() peg.Parser {
+	attrPath := g.attributePath()
 	return peg.Choice(
 		peg.Sequence(
-			peg.Tag("attribute", g.AttributePath()),
-			peg.Space(),
-			peg.Tag("operator", g.Presence()),
+			peg.Tag("attribute", attrPath), peg.Space(),
+			peg.Tag("operator", peg.Fold("pr")),
 		),
 		peg.Sequence(
-			peg.Tag("attribute", g.AttributePath()),
-			peg.Space(),
-			peg.Tag("operator", g.ComparisonOperator()),
-			peg.Space(),
-			peg.Tag("value", g.ComparisonValue()),
+			peg.Tag("attribute", attrPath), peg.Space(),
+			peg.Tag("operator", g.comparisonOperator()), peg.Space(),
+			peg.Tag("value", g.comparisonValue()),
 		),
 	)
 }
 
-// valuePath = attrPath "[" valFilter "]"
-func (g *Grammar) ValuePath() peg.Parser {
-	return peg.Sequence(
-		peg.Tag("path", g.AttributePath()),
-		peg.Str("["),
-		peg.Tag("value_filter", g.ValueFilter()),
-		peg.Str("]"),
-		peg.Optional(peg.Tag("sub_attribute", g.SubAttribute())),
+// compareOp = "eq" / "ne" / "co" / "sw" / "ew" / "gt" / "lt" / "ge" / "le"
+// Operators are case-insensitive per RFC 7644.
+func (g *Grammar) comparisonOperator() peg.Parser {
+	return peg.Choice(
+		peg.Fold("eq"), peg.Fold("ne"), peg.Fold("co"), peg.Fold("sw"), peg.Fold("ew"),
+		peg.Fold("gt"), peg.Fold("lt"), peg.Fold("ge"), peg.Fold("le"),
 	)
 }
 
-// valFilter = attrExp / logExp / *1"not" "(" valFilter ")"
-func (g *Grammar) ValueFilter() peg.Parser {
-	return g.Filter()
+// compValue = false / null / true / number / string (JSON rules, RFC 7159).
+// JSON literals are lowercase-only, unlike the case-insensitive operators.
+func (g *Grammar) comparisonValue() peg.Parser {
+	return peg.Choice(
+		constant("false", false),
+		constant("null", nil),
+		constant("true", true),
+		convert(peg.Match(reNumber), func(s string) (peg.ASTNode, error) {
+			return strconv.ParseFloat(s, 64)
+		}),
+		convert(peg.Match(reString), func(s string) (peg.ASTNode, error) {
+			var out string
+			err := json.Unmarshal([]byte(s), &out)
+			return out, err
+		}),
+	)
 }
 
 // attrPath = [URI ":"] ATTRNAME *1subAttr
-func (g *Grammar) AttributePath() peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, bool) {
+func (g *Grammar) attributePath() peg.Parser {
+	attrName := g.attributeName()
+	schemaURI := g.schemaURI()
+	subAttr := g.subAttribute()
+	return func(c *peg.Context) (peg.ASTNode, error) {
 		start := c.Position()
 		prefix := ""
-		if uri, ok := g.schemaURI()(c); ok {
+		if uri, err := schemaURI(c); err == nil {
 			prefix = uri.(string) + ":"
 		}
-		name, ok := g.AttributeName()(c)
-		if !ok {
+		name, err := attrName(c)
+		if err != nil {
 			c.Seek(start)
-			return nil, false
+			return nil, err
 		}
 		path := prefix + name.(string)
-		if sub, ok := g.SubAttribute()(c); ok {
+		if sub, err := subAttr(c); err == nil {
 			path += "." + sub.(string)
 		}
-		return path, true
+		return path, nil
 	}
 }
 
 // ATTRNAME = ALPHA *(nameChar)
-// nameChar = "-" / "_" / DIGIT / ALPHA
-func (g *Grammar) AttributeName() peg.Parser {
-	return peg.Match(regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9_\-]*`))
+func (g *Grammar) attributeName() peg.Parser {
+	return peg.Match(reAttributeName)
 }
 
 // subAttr = "." ATTRNAME
-func (g *Grammar) SubAttribute() peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, bool) {
-		if _, ok := peg.Str(".")(c); !ok {
-			return nil, false
+func (g *Grammar) subAttribute() peg.Parser {
+	attrName := g.attributeName()
+	return func(c *peg.Context) (peg.ASTNode, error) {
+		if _, err := peg.Str(".")(c); err != nil {
+			return nil, err
 		}
-		return g.AttributeName()(c)
+		return attrName(c)
 	}
 }
 
-// compareOp = "eq" / "ne" / "co" / "sw" / "ew" / "gt" / "lt" / "ge" / "le"
-func (g *Grammar) ComparisonOperator() peg.Parser {
-	return peg.Choice(
-		g.Equal(), g.NotEqual(), g.Contains(), g.StartsWith(), g.EndsWith(),
-		g.GreaterThan(), g.LessThan(), g.GreaterThanEquals(), g.LessThanEquals(),
-	)
-}
-
-func (g *Grammar) Equal() peg.Parser             { return peg.Str("eq") }
-func (g *Grammar) NotEqual() peg.Parser          { return peg.Str("ne") }
-func (g *Grammar) Contains() peg.Parser          { return peg.Str("co") }
-func (g *Grammar) StartsWith() peg.Parser        { return peg.Str("sw") }
-func (g *Grammar) EndsWith() peg.Parser          { return peg.Str("ew") }
-func (g *Grammar) GreaterThan() peg.Parser       { return peg.Str("gt") }
-func (g *Grammar) LessThan() peg.Parser          { return peg.Str("lt") }
-func (g *Grammar) GreaterThanEquals() peg.Parser { return peg.Str("ge") }
-func (g *Grammar) LessThanEquals() peg.Parser    { return peg.Str("le") }
-
-// "pr" ; presence operator, attrExp's other alternative
-func (g *Grammar) Presence() peg.Parser { return peg.Str("pr") }
-
-// "and" ; logExp operator
-func (g *Grammar) AndOp() peg.Parser { return peg.Str("and") }
-
-// "or" ; logExp operator
-func (g *Grammar) OrOp() peg.Parser { return peg.Str("or") }
-
-// "not" ; FILTER/valFilter negation prefix
-func (g *Grammar) NotOp() peg.Parser { return peg.Str("not") }
-
-// compValue = false / null / true / number / string
-func (g *Grammar) ComparisonValue() peg.Parser {
-	return peg.Choice(
-		g.Falsey(),
-		g.Null(),
-		g.Truthy(),
-		g.Number(),
-		g.StringLiteral(),
-	)
-}
-
-func (g *Grammar) Falsey() peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, bool) {
-		if _, ok := peg.Str("false")(c); ok {
-			return false, true
-		}
-		return nil, false
-	}
-}
-
-func (g *Grammar) Truthy() peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, bool) {
-		if _, ok := peg.Str("true")(c); ok {
-			return true, true
-		}
-		return nil, false
-	}
-}
-
-func (g *Grammar) Null() peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, bool) {
-		if _, ok := peg.Str("null")(c); ok {
-			return nil, true
-		}
-		return nil, false
-	}
-}
-
-func (g *Grammar) Number() peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, bool) {
-		val, ok := peg.Match(regexp.MustCompile(`-?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?`))(c)
-		if !ok {
-			return nil, false
-		}
-		n, err := strconv.ParseFloat(val.(string), 64)
-		if err != nil {
-			return nil, false
-		}
-		return n, true
-	}
-}
-
-func (g *Grammar) StringLiteral() peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, bool) {
-		val, ok := peg.Match(regexp.MustCompile(`"(?:[^"\\]|\\.)*"`))(c)
-		if !ok {
-			return nil, false
-		}
-		s := val.(string)
-		return s[1 : len(s)-1], true
-	}
-}
-
-func (g *Grammar) or() peg.Parser {
-	return peg.Sequence(
-		peg.Tag("left", g.and()),
-		peg.Space(),
-		peg.Tag("operator", g.OrOp()),
-		peg.Space(),
-		peg.Tag("right", g.Filter()),
-	)
-}
-
-func (g *Grammar) and() peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, bool) {
-		return peg.Choice(
-			peg.Sequence(
-				peg.Tag("left", g.FilterAtom()),
-				peg.Space(),
-				peg.Tag("operator", g.AndOp()),
-				peg.Space(),
-				peg.Tag("right", g.and()),
-			),
-			g.FilterAtom(),
-		)(c)
-	}
-}
-
-func (g *Grammar) notParenGroup() peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, bool) {
-		start := c.Position()
-		_, negated := peg.Sequence(g.NotOp(), peg.Space())(c)
-		if _, ok := peg.Str("(")(c); !ok {
-			c.Seek(start)
-			return nil, false
-		}
-		inner, ok := g.Filter()(c)
-		if !ok {
-			c.Seek(start)
-			return nil, false
-		}
-		if _, ok := peg.Str(")")(c); !ok {
-			c.Seek(start)
-			return nil, false
-		}
-		if !negated {
-			return inner, true
-		}
-		return peg.Token{"not": inner}, true
-	}
-}
-
+// URI ":" prefix on an attrPath. The trailing ":" is stripped from the value.
 func (g *Grammar) schemaURI() peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, bool) {
-		val, ok := peg.Match(regexp.MustCompile(`[A-Za-z][A-Za-z0-9.\-]*(?::[A-Za-z0-9.\-]+)*:`))(c)
-		if !ok {
-			return nil, false
+	return convert(peg.Match(reSchemaURI), func(s string) (peg.ASTNode, error) {
+		return s[:len(s)-1], nil
+	})
+}
+
+func binExpr(left, op peg.Parser, name string, right peg.Parser) peg.Parser {
+	return func(c *peg.Context) (peg.ASTNode, error) {
+		l, err := left(c)
+		if err != nil {
+			return nil, err
 		}
-		s := val.(string)
-		return s[:len(s)-1], true
+		start := c.Position()
+		peg.Space()(c)
+		if _, err := op(c); err != nil {
+			c.Seek(start)
+			return l, nil
+		}
+		peg.Space()(c)
+		r, err := right(c)
+		if err != nil {
+			c.Seek(start)
+			return l, nil
+		}
+		return peg.Token{"left": l, "operator": name, "right": r}, nil
+	}
+}
+
+func constant(lit string, val peg.ASTNode) peg.Parser {
+	return func(c *peg.Context) (peg.ASTNode, error) {
+		if _, err := peg.Str(lit)(c); err != nil {
+			return nil, err
+		}
+		return val, nil
+	}
+}
+
+func convert(p peg.Parser, fn func(string) (peg.ASTNode, error)) peg.Parser {
+	return func(c *peg.Context) (peg.ASTNode, error) {
+		start := c.Position()
+		val, err := p(c)
+		if err != nil {
+			return nil, err
+		}
+		out, err := fn(val.(string))
+		if err != nil {
+			c.Seek(start)
+			return nil, err
+		}
+		return out, nil
 	}
 }

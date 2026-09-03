@@ -17,9 +17,9 @@ func TestTag(t *testing.T) {
 			Match(regexp.MustCompile(`"[a-z]+"`)),
 		))
 		ctx := NewContext(`userName eq "bjensen"`)
-		result, ok := atom(ctx)
+		result, err := atom(ctx)
 
-		assert.Equal(t, true, ok)
+		assert.NoError(t, err)
 		assert.Equal(t, 21, ctx.position)
 		assert.Equal(t, Token{"filter": []ASTNode{"userName", "eq", `"bjensen"`}}, result)
 	})
@@ -27,9 +27,9 @@ func TestTag(t *testing.T) {
 	t.Run("returns false when inner parser fails", func(t *testing.T) {
 		atom := Tag("filter", Str("doesnotexist"))
 		ctx := &Context{stream: `userName eq "bjensen"`}
-		result, ok := atom(ctx)
+		result, err := atom(ctx)
 
-		assert.Equal(t, false, ok)
+		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Equal(t, 0, ctx.position)
 	})

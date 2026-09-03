@@ -26,11 +26,11 @@ func TestSpace(t *testing.T) {
 	for _, expected := range tt {
 		t.Run(fmt.Sprintf("%s %d", expected.stream, expected.position), func(t *testing.T) {
 			ctx := NewContext(expected.stream)
-			item, ok := atom(ctx)
+			item, err := atom(ctx)
 
 			require.Nil(t, item)
 			assert.Equal(t, expected.position, ctx.position)
-			assert.True(t, ok)
+			assert.NoError(t, err)
 		})
 	}
 }

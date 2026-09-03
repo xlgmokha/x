@@ -1,15 +1,12 @@
 package peg
 
-import "strings"
-
+// Str matches a case-sensitive literal.
 func Str(s string) Parser {
-	return func(c *Context) (ASTNode, bool) {
-		start := c.position
-		if c.position+len(s) <= len(c.stream) && strings.EqualFold(c.stream[c.position:c.position+len(s)], s) {
+	return func(c *Context) (ASTNode, error) {
+		if c.position+len(s) <= len(c.stream) && c.stream[c.position:c.position+len(s)] == s {
 			c.position += len(s)
-			return s, true
+			return s, nil
 		}
-		c.position = start
-		return nil, false
+		return nil, ErrNoMatch
 	}
 }
