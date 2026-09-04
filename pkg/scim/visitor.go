@@ -1,9 +1,6 @@
 package scim
 
-import (
-	"fmt"
-	"strings"
-)
+import "fmt"
 
 type Visitor[T any] interface {
 	VisitAnd(left, right T) (T, error)
@@ -22,70 +19,63 @@ type Visitor[T any] interface {
 	VisitValuePath(path AttrPath, subAttribute string, valueFilter func() (T, error)) (T, error)
 }
 
-func Visit[T any](v Visitor[T], n *Node) (T, error) {
+func Visit[T any](v Visitor[T], e Expression) (T, error) {
 	var zero T
-	if n == nil {
-		return zero, fmt.Errorf("scim: cannot visit a nil node")
-	}
-	if n.Not() {
-		operand, err := Visit(v, n.Operand())
+	switch e := e.(type) {
+	case Comparison:
+		return visitComparison(v, e)
+	case Logical:
+		left, err := Visit(v, e.Left)
+		if err != nil {
+			return zero, err
+		}
+		right, err := Visit(v, e.Right)
+		if err != nil {
+			return zero, err
+		}
+		if e.Operator == Or {
+			return v.VisitOr(left, right)
+		}
+		return v.VisitAnd(left, right)
+	case Not:
+		operand, err := Visit(v, e.Operand)
 		if err != nil {
 			return zero, err
 		}
 		return v.VisitNot(operand)
-	}
-	return dispatch(v, n)
-}
-
-func dispatch[T any](v Visitor[T], n *Node) (T, error) {
-	var zero T
-
-	if n.HasPath() {
-		return v.VisitValuePath(n.AttrPath(), n.SubAttribute(), func() (T, error) {
-			return Visit(v, n.ValueFilter())
+	case ValuePath:
+		return v.VisitValuePath(e.Attribute, e.SubAttribute, func() (T, error) {
+			return Visit(v, e.Filter)
 		})
-	}
-
-	attr := n.AttrPath()
-	switch strings.ToLower(n.Operator()) {
-	case "and":
-		return visitBinary(v, n, v.VisitAnd)
-	case "or":
-		return visitBinary(v, n, v.VisitOr)
-	case "eq":
-		return v.VisitEquals(attr, n.Value())
-	case "ne":
-		return v.VisitNotEquals(attr, n.Value())
-	case "co":
-		return v.VisitContains(attr, n.Value())
-	case "sw":
-		return v.VisitStartsWith(attr, n.Value())
-	case "ew":
-		return v.VisitEndsWith(attr, n.Value())
-	case "gt":
-		return v.VisitGreaterThan(attr, n.Value())
-	case "ge":
-		return v.VisitGreaterThanEquals(attr, n.Value())
-	case "lt":
-		return v.VisitLessThan(attr, n.Value())
-	case "le":
-		return v.VisitLessThanEquals(attr, n.Value())
-	case "pr":
-		return v.VisitPresence(attr)
 	default:
-		return zero, fmt.Errorf("scim: unrecognized node shape: %+v", n.raw)
+		return zero, fmt.Errorf("scim: cannot visit %T", e)
 	}
 }
 
-func visitBinary[T any](v Visitor[T], n *Node, combine func(left, right T) (T, error)) (T, error) {
-	var zero T
-	left, err := Visit(v, n.Left())
-	if err != nil {
-		return zero, err
+func visitComparison[T any](v Visitor[T], c Comparison) (T, error) {
+	switch c.Operator {
+	case Equal:
+		return v.VisitEquals(c.Attribute, c.Value)
+	case NotEqual:
+		return v.VisitNotEquals(c.Attribute, c.Value)
+	case Contains:
+		return v.VisitContains(c.Attribute, c.Value)
+	case StartsWith:
+		return v.VisitStartsWith(c.Attribute, c.Value)
+	case EndsWith:
+		return v.VisitEndsWith(c.Attribute, c.Value)
+	case GreaterThan:
+		return v.VisitGreaterThan(c.Attribute, c.Value)
+	case GreaterOrEqual:
+		return v.VisitGreaterThanEquals(c.Attribute, c.Value)
+	case LessThan:
+		return v.VisitLessThan(c.Attribute, c.Value)
+	case LessOrEqual:
+		return v.VisitLessThanEquals(c.Attribute, c.Value)
+	case Present:
+		return v.VisitPresence(c.Attribute)
+	default:
+		var zero T
+		return zero, fmt.Errorf("scim: unknown operator %q", c.Operator)
 	}
-	right, err := Visit(v, n.Right())
-	if err != nil {
-		return zero, err
-	}
-	return combine(left, right)
 }

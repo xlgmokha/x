@@ -29,23 +29,20 @@ func FuzzParse(f *testing.F) {
 		if len(input) > 4096 {
 			return
 		}
-		node, err := g.Parse(input)
+		expr, err := g.Parse(input)
 		if err != nil {
 			return
 		}
-		if node == nil {
-			t.Fatalf("nil node with nil error for %q", input)
+		if expr == nil {
+			t.Fatalf("nil expression with nil error for %q", input)
 		}
 
-		text, err := Visit[string](StringifyVisitor{}, node)
-		if err != nil {
-			return
-		}
+		text := expr.String()
 		reparsed, err := g.Parse(text)
 		if err != nil {
 			t.Fatalf("stringified %q -> %q failed to reparse: %v", input, text, err)
 		}
-		if !reflect.DeepEqual(node, reparsed) {
+		if !reflect.DeepEqual(expr, reparsed) {
 			t.Fatalf("round-trip changed the AST: %q -> %q", input, text)
 		}
 	})

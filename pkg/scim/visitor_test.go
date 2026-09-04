@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStringifyVisitorRoundTrip(t *testing.T) {
+func TestExpressionStringRoundTrip(t *testing.T) {
 	tt := []string{
 		`userName eq "bjensen"`,
 		`userName pr`,
@@ -30,10 +30,7 @@ func TestStringifyVisitorRoundTrip(t *testing.T) {
 			original, err := g.Parse(input)
 			require.NoError(t, err)
 
-			text, err := Visit[string](StringifyVisitor{}, original)
-			require.NoError(t, err)
-
-			reparsed, err := g.Parse(text)
+			reparsed, err := g.Parse(original.String())
 			require.NoError(t, err)
 
 			assert.Equal(t, original, reparsed)
@@ -88,6 +85,26 @@ func TestVisitDispatch(t *testing.T) {
 
 		assert.Error(t, err)
 	})
+
+	t.Run("folds every operator through Visit", func(t *testing.T) {
+		inputs := []string{
+			`a eq "1"`, `a ne "1"`, `a co "1"`, `a sw "1"`, `a ew "1"`,
+			`a gt 1`, `a ge 1`, `a lt 1`, `a le 1`, `a pr`,
+			`a eq "1" or b eq "2"`,
+		}
+		for _, in := range inputs {
+			expr, err := g.Parse(in)
+			require.NoError(t, err)
+
+			_, err = Visit[int](countingVisitor{}, expr)
+			assert.NoError(t, err, in)
+		}
+	})
+}
+
+func TestParseErrorMessage(t *testing.T) {
+	err := &ParseError{Input: `userName xx`, Position: 9}
+	assert.Equal(t, `scim: invalid filter at position 9: "userName xx"`, err.Error())
 }
 
 type scopeVisitor struct{ scope []string }

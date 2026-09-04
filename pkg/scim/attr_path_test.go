@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNodeAttrPathSplitsParts(t *testing.T) {
+func TestAttrPathSplitsParts(t *testing.T) {
 	tt := []struct {
 		input string
 		want  AttrPath
@@ -26,21 +26,20 @@ func TestNodeAttrPathSplitsParts(t *testing.T) {
 	g := &Grammar{}
 	for _, tc := range tt {
 		t.Run(tc.input, func(t *testing.T) {
-			node, err := g.Parse(tc.input)
+			expr, err := g.Parse(tc.input)
 			require.NoError(t, err)
 
-			got := node.AttrPath()
+			got := expr.(Comparison).Attribute
 
 			assert.Equal(t, tc.want, got)
-			assert.Equal(t, node.Attribute(), got.String())
 		})
 	}
 }
 
-func TestNodeAttrPathOfValuePath(t *testing.T) {
+func TestAttrPathOfValuePath(t *testing.T) {
 	g := &Grammar{}
-	node, err := g.Parse(`emails[type eq "work"]`)
+	expr, err := g.Parse(`emails[type eq "work"]`)
 	require.NoError(t, err)
 
-	assert.Equal(t, AttrPath{Name: "emails"}, node.AttrPath())
+	assert.Equal(t, AttrPath{Name: "emails"}, expr.(ValuePath).Attribute)
 }

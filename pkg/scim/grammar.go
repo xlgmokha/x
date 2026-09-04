@@ -1,32 +1,13 @@
-// Package scim implements a parser for the SCIM RFC-7644 filter grammar.
 package scim
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"regexp"
 	"strconv"
 	"sync"
 
 	"github.com/xlgmokha/x/pkg/peg"
 )
-
-var ErrInvalidFilter = errors.New("scim: invalid filter")
-
-var ErrInputTooLarge = errors.New("scim: filter exceeds MaxInputBytes")
-
-// ParseError reports a filter that does not conform to the RFC 7644 grammar
-type ParseError struct {
-	Input    string
-	Position int
-}
-
-func (e *ParseError) Error() string {
-	return fmt.Sprintf("scim: invalid filter at position %d: %q", e.Position, e.Input)
-}
-
-func (e *ParseError) Unwrap() error { return ErrInvalidFilter }
 
 var (
 	reAttributeName = regexp.MustCompile(`\A[a-zA-Z][a-zA-Z0-9_\-]*`)
@@ -52,7 +33,7 @@ func New() *Grammar {
 }
 
 // Parse reads a SCIM filter (RFC 7644 3.4.2.2) and returns its AST, or a *ParseError on malformed input.
-func (g *Grammar) Parse(text string) (*Node, error) {
+func (g *Grammar) Parse(text string) (Expression, error) {
 	if g.MaxInputBytes > 0 && len(text) > g.MaxInputBytes {
 		return nil, ErrInputTooLarge
 	}
@@ -66,11 +47,11 @@ func (g *Grammar) Parse(text string) (*Node, error) {
 	if ctx.Position() != len(text) {
 		return nil, &ParseError{Input: text, Position: ctx.Position()}
 	}
-	node := newNode(raw)
-	if node == nil {
+	expr, err := newExpression(raw)
+	if err != nil {
 		return nil, &ParseError{Input: text, Position: ctx.Position()}
 	}
-	return node, nil
+	return expr, nil
 }
 
 // build wires the grammar once; peg.Ref resolves recursion at parse time.
@@ -124,18 +105,18 @@ func (g *Grammar) parenGroup(sub peg.Parser) peg.Parser {
 		if !negated {
 			return inner, nil
 		}
-		return peg.Token{"not": inner}, nil
+		return peg.Token{keyNot: inner}, nil
 	}
 }
 
 // valuePath = attrPath "[" valFilter "]" [subAttr]
 func (g *Grammar) valuePath(valueFilter peg.Parser) peg.Parser {
 	return peg.Sequence(
-		peg.Tag("path", g.attributePath()),
+		peg.Tag(keyPath, g.attributePath()),
 		peg.Str("["),
-		peg.Tag("value_filter", valueFilter),
+		peg.Tag(keyValueFilter, valueFilter),
 		peg.Str("]"),
-		peg.Optional(peg.Tag("sub_attribute", g.subAttribute())),
+		peg.Optional(peg.Tag(keySubAttribute, g.subAttribute())),
 	)
 }
 
@@ -144,13 +125,13 @@ func (g *Grammar) attributeExpression() peg.Parser {
 	attrPath := g.attributePath()
 	return peg.Choice(
 		peg.Sequence(
-			peg.Tag("attribute", attrPath), peg.Space(),
-			peg.Tag("operator", peg.Fold("pr")),
+			peg.Tag(keyAttribute, attrPath), peg.Space(),
+			peg.Tag(keyOperator, peg.Fold("pr")),
 		),
 		peg.Sequence(
-			peg.Tag("attribute", attrPath), peg.Space(),
-			peg.Tag("operator", g.comparisonOperator()), peg.Space(),
-			peg.Tag("value", g.comparisonValue()),
+			peg.Tag(keyAttribute, attrPath), peg.Space(),
+			peg.Tag(keyOperator, g.comparisonOperator()), peg.Space(),
+			peg.Tag(keyValue, g.comparisonValue()),
 		),
 	)
 }
@@ -189,20 +170,20 @@ func (g *Grammar) attributePath() peg.Parser {
 	subAttr := g.subAttribute()
 	return func(c *peg.Context) (peg.ASTNode, error) {
 		start := c.Position()
-		prefix := ""
+		var ap AttrPath
 		if uri, err := schemaURI(c); err == nil {
-			prefix = uri.(string) + ":"
+			ap.URI = uri.(string)
 		}
 		name, err := attrName(c)
 		if err != nil {
 			c.Seek(start)
 			return nil, err
 		}
-		path := prefix + name.(string)
+		ap.Name = name.(string)
 		if sub, err := subAttr(c); err == nil {
-			path += "." + sub.(string)
+			ap.Sub = sub.(string)
 		}
-		return path, nil
+		return ap, nil
 	}
 }
 
@@ -227,51 +208,4 @@ func (g *Grammar) schemaURI() peg.Parser {
 	return convert(peg.Match(reSchemaURI), func(s string) (peg.ASTNode, error) {
 		return s[:len(s)-1], nil
 	})
-}
-
-func binExpr(left, op peg.Parser, name string, right peg.Parser) peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, error) {
-		l, err := left(c)
-		if err != nil {
-			return nil, err
-		}
-		start := c.Position()
-		peg.Space()(c)
-		if _, err := op(c); err != nil {
-			c.Seek(start)
-			return l, nil
-		}
-		peg.Space()(c)
-		r, err := right(c)
-		if err != nil {
-			c.Seek(start)
-			return l, nil
-		}
-		return peg.Token{"left": l, "operator": name, "right": r}, nil
-	}
-}
-
-func constant(lit string, val peg.ASTNode) peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, error) {
-		if _, err := peg.Str(lit)(c); err != nil {
-			return nil, err
-		}
-		return val, nil
-	}
-}
-
-func convert(p peg.Parser, fn func(string) (peg.ASTNode, error)) peg.Parser {
-	return func(c *peg.Context) (peg.ASTNode, error) {
-		start := c.Position()
-		val, err := p(c)
-		if err != nil {
-			return nil, err
-		}
-		out, err := fn(val.(string))
-		if err != nil {
-			c.Seek(start)
-			return nil, err
-		}
-		return out, nil
-	}
 }

@@ -8,6 +8,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func cmp(t *testing.T, e Expression) Comparison {
+	t.Helper()
+	c, ok := e.(Comparison)
+	require.Truef(t, ok, "expected Comparison, got %T", e)
+	return c
+}
+
+func logical(t *testing.T, e Expression) Logical {
+	t.Helper()
+	l, ok := e.(Logical)
+	require.Truef(t, ok, "expected Logical, got %T", e)
+	return l
+}
+
+func notExpr(t *testing.T, e Expression) Not {
+	t.Helper()
+	n, ok := e.(Not)
+	require.Truef(t, ok, "expected Not, got %T", e)
+	return n
+}
+
+func valuePath(t *testing.T, e Expression) ValuePath {
+	t.Helper()
+	v, ok := e.(ValuePath)
+	require.Truef(t, ok, "expected ValuePath, got %T", e)
+	return v
+}
+
 func TestGrammarAttributePath(t *testing.T) {
 	tt := []struct {
 		name  string
@@ -22,123 +50,131 @@ func TestGrammarAttributePath(t *testing.T) {
 	g := &Grammar{}
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			node, err := g.Parse(tc.input)
+			expr, err := g.Parse(tc.input)
 			require.NoError(t, err)
-			assert.Equal(t, tc.want, node.Attribute())
+			assert.Equal(t, tc.want, cmp(t, expr).Attribute.String())
 		})
 	}
 }
 
 func TestGrammarLeafComparison(t *testing.T) {
 	g := &Grammar{}
-	node, err := g.Parse(`userName eq "bjensen"`)
+	expr, err := g.Parse(`userName eq "bjensen"`)
 
 	require.NoError(t, err)
-	require.NotNil(t, node)
-	assert.Equal(t, "userName", node.Attribute())
-	assert.Equal(t, "eq", node.Operator())
-	assert.Equal(t, "bjensen", node.Value())
+	c := cmp(t, expr)
+	assert.Equal(t, "userName", c.Attribute.String())
+	assert.Equal(t, Equal, c.Operator)
+	assert.Equal(t, "bjensen", c.Value)
 }
 
 func TestGrammarComparisonOperatorsAndLiterals(t *testing.T) {
 	tt := []struct {
 		input     string
 		attribute string
-		operator  string
+		operator  CompareOperator
 		value     any
 	}{
-		{`userName eq "bjensen"`, "userName", "eq", "bjensen"},
-		{`userName ne "bjensen"`, "userName", "ne", "bjensen"},
-		{`userName co "jen"`, "userName", "co", "jen"},
-		{`userName sw "bjen"`, "userName", "sw", "bjen"},
-		{`userName ew "sen"`, "userName", "ew", "sen"},
-		{`age gt 21`, "age", "gt", 21.0},
-		{`age ge 21`, "age", "ge", 21.0},
-		{`age lt 21`, "age", "lt", 21.0},
-		{`age le 21`, "age", "le", 21.0},
-		{`salary ge 1.5e4`, "salary", "ge", 1.5e4},
-		{`salary ge -3.5`, "salary", "ge", -3.5},
-		{`active eq true`, "active", "eq", true},
-		{`active eq false`, "active", "eq", false},
-		{`nickName eq null`, "nickName", "eq", nil},
+		{`userName eq "bjensen"`, "userName", Equal, "bjensen"},
+		{`userName ne "bjensen"`, "userName", NotEqual, "bjensen"},
+		{`userName co "jen"`, "userName", Contains, "jen"},
+		{`userName sw "bjen"`, "userName", StartsWith, "bjen"},
+		{`userName ew "sen"`, "userName", EndsWith, "sen"},
+		{`age gt 21`, "age", GreaterThan, 21.0},
+		{`age ge 21`, "age", GreaterOrEqual, 21.0},
+		{`age lt 21`, "age", LessThan, 21.0},
+		{`age le 21`, "age", LessOrEqual, 21.0},
+		{`salary ge 1.5e4`, "salary", GreaterOrEqual, 1.5e4},
+		{`salary ge -3.5`, "salary", GreaterOrEqual, -3.5},
+		{`active eq true`, "active", Equal, true},
+		{`active eq false`, "active", Equal, false},
+		{`nickName eq null`, "nickName", Equal, nil},
 	}
 	g := &Grammar{}
 	for _, tc := range tt {
 		t.Run(tc.input, func(t *testing.T) {
-			node, err := g.Parse(tc.input)
+			expr, err := g.Parse(tc.input)
 
 			require.NoError(t, err)
-			require.NotNil(t, node)
-			assert.Equal(t, tc.attribute, node.Attribute())
-			assert.Equal(t, tc.operator, node.Operator())
-			assert.Equal(t, tc.value, node.Value())
+			c := cmp(t, expr)
+			assert.Equal(t, tc.attribute, c.Attribute.String())
+			assert.Equal(t, tc.operator, c.Operator)
+			assert.Equal(t, tc.value, c.Value)
 		})
 	}
 }
 
 func TestGrammarPresence(t *testing.T) {
 	g := &Grammar{}
-	node, err := g.Parse("userName pr")
+	expr, err := g.Parse("userName pr")
 
 	require.NoError(t, err)
-	require.NotNil(t, node)
-	assert.Equal(t, "userName", node.Attribute())
-	assert.Equal(t, "pr", node.Operator())
-	assert.Nil(t, node.Value())
+	c := cmp(t, expr)
+	assert.Equal(t, "userName", c.Attribute.String())
+	assert.Equal(t, Present, c.Operator)
+	assert.Nil(t, c.Value)
 }
 
 func TestGrammarLogicalExpression(t *testing.T) {
 	g := &Grammar{}
 
 	t.Run("and", func(t *testing.T) {
-		node, err := g.Parse(`userName eq "bjensen" and active eq true`)
+		expr, err := g.Parse(`userName eq "bjensen" and active eq true`)
 
 		require.NoError(t, err)
-		assert.Equal(t, "and", node.Operator())
-		assert.Equal(t, "userName", node.Left().Attribute())
-		assert.Equal(t, "active", node.Right().Attribute())
+		l := logical(t, expr)
+		assert.Equal(t, And, l.Operator)
+		assert.Equal(t, "userName", cmp(t, l.Left).Attribute.String())
+		assert.Equal(t, "active", cmp(t, l.Right).Attribute.String())
 	})
 
 	t.Run("or", func(t *testing.T) {
-		node, err := g.Parse(`userName eq "bjensen" or userName eq "jsmith"`)
+		expr, err := g.Parse(`userName eq "bjensen" or userName eq "jsmith"`)
 
 		require.NoError(t, err)
-		assert.Equal(t, "or", node.Operator())
-		assert.Equal(t, "bjensen", node.Left().Value())
-		assert.Equal(t, "jsmith", node.Right().Value())
+		l := logical(t, expr)
+		assert.Equal(t, Or, l.Operator)
+		assert.Equal(t, "bjensen", cmp(t, l.Left).Value)
+		assert.Equal(t, "jsmith", cmp(t, l.Right).Value)
 	})
 
 	t.Run("chained and", func(t *testing.T) {
-		node, err := g.Parse(`a eq "1" and b eq "2" and c eq "3"`)
+		expr, err := g.Parse(`a eq "1" and b eq "2" and c eq "3"`)
 
 		require.NoError(t, err)
-		assert.Equal(t, "and", node.Operator())
-		assert.Equal(t, "a", node.Left().Attribute())
-		assert.Equal(t, "and", node.Right().Operator())
-		assert.Equal(t, "b", node.Right().Left().Attribute())
-		assert.Equal(t, "c", node.Right().Right().Attribute())
+		l := logical(t, expr)
+		assert.Equal(t, And, l.Operator)
+		assert.Equal(t, "a", cmp(t, l.Left).Attribute.String())
+		r := logical(t, l.Right)
+		assert.Equal(t, And, r.Operator)
+		assert.Equal(t, "b", cmp(t, r.Left).Attribute.String())
+		assert.Equal(t, "c", cmp(t, r.Right).Attribute.String())
 	})
 
 	t.Run("and binds tighter than or, regardless of textual order", func(t *testing.T) {
-		node, err := g.Parse(`a eq "1" and b eq "2" or c eq "3"`)
+		expr, err := g.Parse(`a eq "1" and b eq "2" or c eq "3"`)
 
 		require.NoError(t, err)
-		require.Equal(t, "or", node.Operator(), "expected (a and b) or c, i.e. root operator is or")
-		assert.Equal(t, "and", node.Left().Operator())
-		assert.Equal(t, "a", node.Left().Left().Attribute())
-		assert.Equal(t, "b", node.Left().Right().Attribute())
-		assert.Equal(t, "c", node.Right().Attribute())
+		l := logical(t, expr)
+		require.Equal(t, Or, l.Operator, "expected (a and b) or c, i.e. root operator is or")
+		left := logical(t, l.Left)
+		assert.Equal(t, And, left.Operator)
+		assert.Equal(t, "a", cmp(t, left.Left).Attribute.String())
+		assert.Equal(t, "b", cmp(t, left.Right).Attribute.String())
+		assert.Equal(t, "c", cmp(t, l.Right).Attribute.String())
 	})
 
 	t.Run("or on the left, and on the right, and still binds tighter", func(t *testing.T) {
-		node, err := g.Parse(`a eq "1" or b eq "2" and c eq "3"`)
+		expr, err := g.Parse(`a eq "1" or b eq "2" and c eq "3"`)
 
 		require.NoError(t, err)
-		require.Equal(t, "or", node.Operator(), "expected a or (b and c)")
-		assert.Equal(t, "a", node.Left().Attribute())
-		assert.Equal(t, "and", node.Right().Operator())
-		assert.Equal(t, "b", node.Right().Left().Attribute())
-		assert.Equal(t, "c", node.Right().Right().Attribute())
+		l := logical(t, expr)
+		require.Equal(t, Or, l.Operator, "expected a or (b and c)")
+		assert.Equal(t, "a", cmp(t, l.Left).Attribute.String())
+		r := logical(t, l.Right)
+		assert.Equal(t, And, r.Operator)
+		assert.Equal(t, "b", cmp(t, r.Left).Attribute.String())
+		assert.Equal(t, "c", cmp(t, r.Right).Attribute.String())
 	})
 }
 
@@ -146,31 +182,32 @@ func TestGrammarParensAndNot(t *testing.T) {
 	g := &Grammar{}
 
 	t.Run("not wrapping a parenthesized leaf", func(t *testing.T) {
-		node, err := g.Parse(`not (userName eq "bjensen")`)
+		expr, err := g.Parse(`not (userName eq "bjensen")`)
 
 		require.NoError(t, err)
-		assert.True(t, node.Not())
-		assert.Equal(t, "userName", node.Operand().Attribute())
-		assert.Equal(t, "eq", node.Operand().Operator())
+		c := cmp(t, notExpr(t, expr).Operand)
+		assert.Equal(t, "userName", c.Attribute.String())
+		assert.Equal(t, Equal, c.Operator)
 	})
 
 	t.Run("nested not stays distinct at each level", func(t *testing.T) {
-		node, err := g.Parse(`not (not (userName pr))`)
+		expr, err := g.Parse(`not (not (userName pr))`)
 
 		require.NoError(t, err)
-		require.True(t, node.Not())
-		require.True(t, node.Operand().Not())
-		assert.Equal(t, "userName", node.Operand().Operand().Attribute())
-		assert.Equal(t, "pr", node.Operand().Operand().Operator())
+		inner := notExpr(t, notExpr(t, expr).Operand)
+		c := cmp(t, inner.Operand)
+		assert.Equal(t, "userName", c.Attribute.String())
+		assert.Equal(t, Present, c.Operator)
 	})
 
 	t.Run("parens override precedence", func(t *testing.T) {
-		node, err := g.Parse(`(a eq "1" or b eq "2") and c eq "3"`)
+		expr, err := g.Parse(`(a eq "1" or b eq "2") and c eq "3"`)
 
 		require.NoError(t, err)
-		require.Equal(t, "and", node.Operator())
-		assert.Equal(t, "or", node.Left().Operator())
-		assert.Equal(t, "c", node.Right().Attribute())
+		l := logical(t, expr)
+		require.Equal(t, And, l.Operator)
+		assert.Equal(t, Or, logical(t, l.Left).Operator)
+		assert.Equal(t, "c", cmp(t, l.Right).Attribute.String())
 	})
 
 	t.Run("not without parens is rejected", func(t *testing.T) {
@@ -184,32 +221,34 @@ func TestGrammarValuePath(t *testing.T) {
 	g := &Grammar{}
 
 	t.Run("simple", func(t *testing.T) {
-		node, err := g.Parse(`emails[type eq "work"]`)
+		expr, err := g.Parse(`emails[type eq "work"]`)
 
 		require.NoError(t, err)
-		require.True(t, node.HasPath())
-		assert.Equal(t, "emails", node.Path())
-		assert.Equal(t, "", node.SubAttribute())
-		assert.Equal(t, "type", node.ValueFilter().Attribute())
-		assert.Equal(t, "work", node.ValueFilter().Value())
+		vp := valuePath(t, expr)
+		assert.Equal(t, "emails", vp.Attribute.String())
+		assert.Equal(t, "", vp.SubAttribute)
+		f := cmp(t, vp.Filter)
+		assert.Equal(t, "type", f.Attribute.String())
+		assert.Equal(t, "work", f.Value)
 	})
 
 	t.Run("with a trailing sub-attribute", func(t *testing.T) {
-		node, err := g.Parse(`emails[type eq "work"].value`)
+		expr, err := g.Parse(`emails[type eq "work"].value`)
 
 		require.NoError(t, err)
-		assert.Equal(t, "emails", node.Path())
-		assert.Equal(t, "value", node.SubAttribute())
+		vp := valuePath(t, expr)
+		assert.Equal(t, "emails", vp.Attribute.String())
+		assert.Equal(t, "value", vp.SubAttribute)
 	})
 
 	t.Run("value filter supports and/or", func(t *testing.T) {
-		node, err := g.Parse(`emails[type eq "work" and primary eq true]`)
+		expr, err := g.Parse(`emails[type eq "work" and primary eq true]`)
 
 		require.NoError(t, err)
-		vf := node.ValueFilter()
-		assert.Equal(t, "and", vf.Operator())
-		assert.Equal(t, "type", vf.Left().Attribute())
-		assert.Equal(t, "primary", vf.Right().Attribute())
+		l := logical(t, valuePath(t, expr).Filter)
+		assert.Equal(t, And, l.Operator)
+		assert.Equal(t, "type", cmp(t, l.Left).Attribute.String())
+		assert.Equal(t, "primary", cmp(t, l.Right).Attribute.String())
 	})
 }
 
@@ -230,9 +269,9 @@ func TestParseRejectsOversizedInput(t *testing.T) {
 	})
 
 	t.Run("input within the cap still parses", func(t *testing.T) {
-		node, err := g.Parse(`a eq "1"`) // 8 bytes <= 16
+		expr, err := g.Parse(`a eq "1"`) // 8 bytes <= 16
 		require.NoError(t, err)
-		assert.Equal(t, "a", node.Attribute())
+		assert.Equal(t, "a", cmp(t, expr).Attribute.String())
 	})
 }
 
@@ -241,10 +280,10 @@ func TestParseDefaultIsUnbounded(t *testing.T) {
 	const depth = 4000
 	input := strings.Repeat("(", depth) + `a eq "1"` + strings.Repeat(")", depth)
 
-	node, err := g.Parse(input)
+	expr, err := g.Parse(input)
 
 	require.NoError(t, err)
-	assert.Equal(t, "a", node.Attribute())
+	assert.Equal(t, "a", cmp(t, expr).Attribute.String())
 }
 
 func TestParseErrorReportsPosition(t *testing.T) {
@@ -261,10 +300,10 @@ func TestParseErrorReportsPosition(t *testing.T) {
 
 func TestGrammarTrailingWhitespaceIsTolerated(t *testing.T) {
 	g := &Grammar{}
-	node, err := g.Parse(`userName eq "bjensen"   `)
+	expr, err := g.Parse(`userName eq "bjensen"   `)
 
 	require.NoError(t, err)
-	assert.Equal(t, "userName", node.Attribute())
+	assert.Equal(t, "userName", cmp(t, expr).Attribute.String())
 }
 
 func TestGrammarDeepNestingIsLinear(t *testing.T) {
@@ -272,11 +311,12 @@ func TestGrammarDeepNestingIsLinear(t *testing.T) {
 	const depth = 2000
 	input := strings.Repeat("(", depth) + `userName eq "bjensen"` + strings.Repeat(")", depth)
 
-	node, err := g.Parse(input)
+	expr, err := g.Parse(input)
 
 	require.NoError(t, err)
-	assert.Equal(t, "userName", node.Attribute())
-	assert.Equal(t, "eq", node.Operator())
+	c := cmp(t, expr)
+	assert.Equal(t, "userName", c.Attribute.String())
+	assert.Equal(t, Equal, c.Operator)
 }
 
 func TestGrammarOperatorsAreCaseInsensitive(t *testing.T) {
@@ -284,21 +324,21 @@ func TestGrammarOperatorsAreCaseInsensitive(t *testing.T) {
 	g := &Grammar{}
 
 	t.Run("comparison operator", func(t *testing.T) {
-		node, err := g.Parse(`userName EQ "bjensen"`)
+		expr, err := g.Parse(`userName EQ "bjensen"`)
 		require.NoError(t, err)
-		assert.Equal(t, "eq", node.Operator())
+		assert.Equal(t, Equal, cmp(t, expr).Operator)
 	})
 
 	t.Run("logical keyword", func(t *testing.T) {
-		node, err := g.Parse(`userName eq "a" AND active pr`)
+		expr, err := g.Parse(`userName eq "a" AND active pr`)
 		require.NoError(t, err)
-		assert.Equal(t, "and", node.Operator())
+		assert.Equal(t, And, logical(t, expr).Operator)
 	})
 
 	t.Run("presence", func(t *testing.T) {
-		node, err := g.Parse(`userName PR`)
+		expr, err := g.Parse(`userName PR`)
 		require.NoError(t, err)
-		assert.Equal(t, "pr", node.Operator())
+		assert.Equal(t, Present, cmp(t, expr).Operator)
 	})
 }
 
@@ -334,9 +374,9 @@ func TestGrammarStringEscapesAreDecoded(t *testing.T) {
 	g := &Grammar{}
 	for _, tc := range tt {
 		t.Run(tc.input, func(t *testing.T) {
-			node, err := g.Parse(tc.input)
+			expr, err := g.Parse(tc.input)
 			require.NoError(t, err)
-			assert.Equal(t, tc.want, node.Value())
+			assert.Equal(t, tc.want, cmp(t, expr).Value)
 		})
 	}
 }
@@ -372,9 +412,9 @@ func TestGrammarValueFilterRejectsNestedValuePath(t *testing.T) {
 	})
 
 	t.Run("not-group inside brackets is accepted", func(t *testing.T) {
-		node, err := g.Parse(`emails[not (type eq "work")]`)
+		expr, err := g.Parse(`emails[not (type eq "work")]`)
 		require.NoError(t, err)
-		require.True(t, node.HasPath())
-		assert.True(t, node.ValueFilter().Not())
+		_, ok := valuePath(t, expr).Filter.(Not)
+		assert.True(t, ok)
 	})
 }
